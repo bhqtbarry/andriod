@@ -10,6 +10,7 @@ import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ReviewItem
+import cn.syphotos.android.model.SearchSuggestion
 import cn.syphotos.android.model.UploadConfig
 import cn.syphotos.android.model.DeviceSession
 import cn.syphotos.android.model.UserSummary
@@ -114,6 +115,34 @@ class WebSyPhotosRepository(
                 .sortedByDescending { it.value }
                 .map { CategoryCount(it.key, it.value) },
         )
+    }
+
+    override fun getSuggestions(field: String, query: String, filter: PhotoFilter): List<SearchSuggestion> {
+        val uri = apiUri("search/suggestions.php").buildUpon().apply {
+            appendQueryParameter("field", field)
+            appendQueryParameter("q", query)
+            appendIfNotBlank("keyword", mergeKeyword(filter.keyword, filter.author))
+            filter.author.toLongOrNull()?.let { appendQueryParameter("userid", it.toString()) }
+            appendIfNotBlank("airline", filter.airline)
+            appendIfNotBlank("aircraft_model", filter.aircraftModel)
+            appendIfNotBlank("cam", filter.camera)
+            appendIfNotBlank("lens", filter.lens)
+            appendIfNotBlank("registration_number", filter.registration.uppercase())
+            appendIfNotBlank("iatacode", filter.locationCode.uppercase())
+        }.build()
+        return buildList {
+            val items = openJsonArray(uri.toString())
+            for (index in 0 until minOf(items.length(), 5)) {
+                val item = items.getJSONObject(index)
+                add(
+                    SearchSuggestion(
+                        value = item.optString("value"),
+                        label = item.optString("label").ifBlank { item.optString("value") },
+                        count = item.optInt("count", 0),
+                    ),
+                )
+            }
+        }
     }
 
     override fun getMapClusters(filter: PhotoFilter): List<MapCluster> {
@@ -299,6 +328,8 @@ class WebSyPhotosRepository(
                     level = item.optString("level").ifBlank { "airport" },
                     photoCount = item.optInt("photoCount", item.optInt("photo_count", 0)),
                     locationCode = item.optString("key").ifBlank { item.optString("locationCode").ifBlank { item.optString("location_code") } },
+                    latitude = item.optDouble("latitude").takeUnless { it.isNaN() },
+                    longitude = item.optDouble("longitude").takeUnless { it.isNaN() },
                 ),
             )
         }

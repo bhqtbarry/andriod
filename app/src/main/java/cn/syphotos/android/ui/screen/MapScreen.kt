@@ -1,7 +1,6 @@
 package cn.syphotos.android.ui.screen
 
 import android.annotation.SuppressLint
-import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -22,10 +21,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.unit.dp
-import cn.syphotos.android.BuildConfig
+import cn.syphotos.android.model.MapCluster
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.AppUiState
+import org.json.JSONArray
+import org.json.JSONObject
 
 @Composable
 fun MapScreen(
@@ -34,8 +35,13 @@ fun MapScreen(
     onApplyMapSelection: (String) -> Unit,
 ) {
     val strings = LocalAppStrings.current
-    val mapUrl = remember(state.photoFilter.locationCode) {
-        buildMapUrl(state.photoFilter.locationCode)
+    val mapHtml = remember(state.mapState.clusters) {
+        buildMapHtml(
+            clusters = state.mapState.clusters,
+            mapIataLabel = "IATA",
+            mapPhotoCountLabel = "Photos",
+            mapViewPhotosLabel = "View photos",
+        )
     }
     LazyColumn(
         modifier = Modifier
@@ -64,7 +70,7 @@ fun MapScreen(
                 tonalElevation = 2.dp,
             ) {
                 MapWebView(
-                    url = mapUrl,
+                    html = mapHtml,
                     onApplyMapSelection = onApplyMapSelection,
                 )
             }
@@ -105,7 +111,7 @@ fun MapScreen(
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun MapWebView(
-    url: String,
+    html: String,
     onApplyMapSelection: (String) -> Unit,
 ) {
     AndroidView(
@@ -118,7 +124,7 @@ private fun MapWebView(
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                         val target = request?.url ?: return false
-                        if (target.lastPathSegment == "photolist.php") {
+                        if (target.scheme == "syphotos" && target.host == "photolist") {
                             val iata = target.getQueryParameter("iatacode").orEmpty()
                             if (iata.isNotBlank()) {
                                 onApplyMapSelection(iata)
@@ -128,24 +134,105 @@ private fun MapWebView(
                         return false
                     }
                 }
-                loadUrl(url)
+                loadDataWithBaseURL("https://www.openstreetmap.org", html, "text/html", "utf-8", null)
             }
         },
         update = { webView ->
-            if (webView.url != url) {
-                webView.loadUrl(url)
-            }
+            webView.loadDataWithBaseURL("https://www.openstreetmap.org", html, "text/html", "utf-8", null)
         },
         modifier = Modifier.fillMaxSize(),
     )
 }
 
-private fun buildMapUrl(locationCode: String): String {
-    val apiBase = BuildConfig.SY_PHOTOS_BASE_URL.trimEnd('/')
-    val siteBase = apiBase.substringBefore("/api/")
-    return Uri.parse("$siteBase/map.php").buildUpon().apply {
-        if (locationCode.isNotBlank()) {
-            appendQueryParameter("iatacode", locationCode.uppercase())
+private fun buildMapHtml(
+    clusters: List<MapCluster>,
+    mapIataLabel: String,
+    mapPhotoCountLabel: String,
+    mapViewPhotosLabel: String,
+): String {
+    val itemsJson = JSONArray().apply {
+        clusters.forEach { cluster ->
+            if (cluster.latitude != null && cluster.longitude != null) {
+                put(
+                    JSONObject().apply {
+                        put("iata_code", cluster.locationCode)
+                        put("name", cluster.name)
+                        put("photoCount", cluster.photoCount)
+                        put("latitude_deg", cluster.latitude)
+                        put("longitude_deg", cluster.longitude)
+                    },
+                )
+            }
         }
-    }.build().toString()
+    }
+    return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+            html, body, #map { margin: 0; padding: 0; height: 100%; width: 100%; }
+            body { background: #dfeeff; font-family: sans-serif; }
+            .map-pin-count {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 28px;
+                height: 28px;
+                padding: 0 9px;
+                border-radius: 999px;
+                background: #ffffff;
+                color: #d93025;
+                border: 1px solid #f2b4b0;
+                box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
+                font-size: 13px;
+                font-weight: 700;
+                line-height: 1;
+                white-space: nowrap;
+            }
+            .map-count-marker {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                transform: translate(-50%, -50%);
+            }
+            .leaflet-popup-content { font-size: 15px; line-height: 1.6; }
+        </style>
+        </head>
+        <body>
+            <div id="map"></div>
+            <script>
+                const airportData = $itemsJson;
+                const map = L.map('map', { zoomControl: true, tap: true }).setView([20, 0], 2);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+                airportData.forEach(item => {
+                    const lng = parseFloat(item.longitude_deg);
+                    const lat = parseFloat(item.latitude_deg);
+                    if (isNaN(lat) || isNaN(lng)) return;
+                    const icon = L.divIcon({
+                        className: 'map-count-marker',
+                        html: `<div class="map-pin-count">${'$'}{item.photoCount}</div>`,
+                        iconSize: [36, 28],
+                        iconAnchor: [18, 14],
+                        popupAnchor: [0, -12]
+                    });
+                    const popupHtml = `
+                        <div>
+                            <strong>${'$'}{item.iata_code} - ${'$'}{item.name}</strong><br>
+                            $mapIataLabel: ${'$'}{item.iata_code}<br>
+                            $mapPhotoCountLabel: ${'$'}{item.photoCount}<br>
+                            <a href="syphotos://photolist?iatacode=${'$'}{item.iata_code}" style="display:inline-block;margin-top:6px;color:#0066cc">
+                                $mapViewPhotosLabel →
+                            </a>
+                        </div>
+                    `;
+                    L.marker([lat, lng], { icon }).addTo(map).bindPopup(popupHtml);
+                });
+            </script>
+        </body>
+        </html>
+    """.trimIndent()
 }

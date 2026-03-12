@@ -47,6 +47,14 @@ data class MapCluster(
     val level: String,
     val photoCount: Int,
     val locationCode: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+)
+
+data class SearchSuggestion(
+    val value: String,
+    val label: String,
+    val count: Int,
 )
 
 data class ReviewItem(

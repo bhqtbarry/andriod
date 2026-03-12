@@ -37,6 +37,9 @@ fun AppNavHost(
             AllPhotosScreen(
                 state = viewModel.uiState,
                 onFilterChange = viewModel::updateFilter,
+                suggestionsByField = viewModel.uiState.suggestionState.itemsByField,
+                onRequestSuggestions = viewModel::requestSuggestions,
+                onClearSuggestions = viewModel::clearSuggestions,
                 onOpenPhoto = { photoId ->
                     viewModel.prefetchPhotoDetail(photoId)
                     onOpenPhoto(photoId)
@@ -55,7 +58,10 @@ fun AppNavHost(
             )
         }
         composable(AppDestination.Upload.route) {
-            UploadScreen(state = viewModel.uiState.uploadState)
+            UploadScreen(
+                state = viewModel.uiState.uploadState,
+                onChooseImage = viewModel::updateUploadSelection,
+            )
         }
         composable(AppDestination.Category.route) {
             CategoryScreen(state = viewModel.uiState.categoryState)

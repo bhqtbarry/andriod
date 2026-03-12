@@ -9,6 +9,7 @@ import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ReviewItem
 import cn.syphotos.android.model.MySummaryStats
+import cn.syphotos.android.model.SearchSuggestion
 import cn.syphotos.android.model.UploadConfig
 import cn.syphotos.android.model.UserSummary
 
@@ -24,6 +25,8 @@ interface SyPhotosRepository {
     fun getPhotoDetail(photoId: Long): PhotoDetail
 
     fun getCategoryCounts(): Pair<List<CategoryCount>, List<CategoryCount>>
+
+    fun getSuggestions(field: String, query: String, filter: PhotoFilter = PhotoFilter()): List<SearchSuggestion>
 
     fun getMapClusters(filter: PhotoFilter = PhotoFilter()): List<MapCluster>
 

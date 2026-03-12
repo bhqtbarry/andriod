@@ -8,6 +8,7 @@ import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ReviewItem
+import cn.syphotos.android.model.SearchSuggestion
 import cn.syphotos.android.model.MySummaryStats
 import cn.syphotos.android.model.UploadConfig
 import cn.syphotos.android.model.UserSummary
@@ -86,6 +87,23 @@ class FakeSyPhotosRepository : SyPhotosRepository {
         )
     }
 
+    override fun getSuggestions(field: String, query: String, filter: PhotoFilter): List<SearchSuggestion> {
+        val candidates = when (field) {
+            "userid" -> getPhotos(filter).groupBy { it.author }
+            "airline" -> getPhotos(filter).groupBy { it.airline }
+            "aircraft_model" -> getPhotos(filter).groupBy { it.aircraftModel }
+            "cam" -> getPhotos(filter).groupBy { it.camera }
+            "lens" -> getPhotos(filter).groupBy { it.lens }
+            "registration_number" -> getPhotos(filter).groupBy { it.registration }
+            "iatacode" -> getPhotos(filter).groupBy { it.location }
+            else -> emptyMap()
+        }
+        return candidates.entries
+            .map { (label, items) -> SearchSuggestion(value = label, label = label, count = items.size) }
+            .filter { it.label.contains(query, ignoreCase = true) }
+            .take(5)
+    }
+
     override fun getMapClusters(filter: PhotoFilter): List<MapCluster> {
         return getPhotos(filter)
             .groupBy { it.location }
@@ -96,6 +114,16 @@ class FakeSyPhotosRepository : SyPhotosRepository {
                     level = "airport",
                     photoCount = items.size,
                     locationCode = location,
+                    latitude = when (location) {
+                        "CGK" -> -6.1256
+                        "SUB" -> -7.3798
+                        else -> 0.0
+                    },
+                    longitude = when (location) {
+                        "CGK" -> 106.6558
+                        "SUB" -> 112.7878
+                        else -> 0.0
+                    },
                 )
             }
             .sortedByDescending { it.photoCount }

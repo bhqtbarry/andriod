@@ -19,6 +19,7 @@ import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ReviewItem
+import cn.syphotos.android.model.SearchSuggestion
 import cn.syphotos.android.model.UploadConfig
 import cn.syphotos.android.model.UserSummary
 import kotlinx.coroutines.Dispatchers
@@ -128,6 +129,37 @@ class AppViewModel(
                 )
             }
         }
+    }
+
+    fun requestSuggestions(field: String, query: String) {
+        if (query.isBlank()) {
+            uiState = uiState.copy(
+                suggestionState = uiState.suggestionState.copy(itemsByField = uiState.suggestionState.itemsByField + (field to emptyList())),
+            )
+            return
+        }
+        viewModelScope.launch {
+            val items = runCatching {
+                withContext(Dispatchers.IO) { webRepository.getSuggestions(field, query, uiState.photoFilter) }
+            }.getOrElse {
+                fallbackRepository.getSuggestions(field, query, uiState.photoFilter)
+            }
+            uiState = uiState.copy(
+                suggestionState = uiState.suggestionState.copy(itemsByField = uiState.suggestionState.itemsByField + (field to items)),
+            )
+        }
+    }
+
+    fun clearSuggestions(field: String) {
+        uiState = uiState.copy(
+            suggestionState = uiState.suggestionState.copy(itemsByField = uiState.suggestionState.itemsByField + (field to emptyList())),
+        )
+    }
+
+    fun updateUploadSelection(fileName: String) {
+        uiState = uiState.copy(
+            uploadState = uiState.uploadState.copy(fileName = fileName),
+        )
     }
 
     fun findPhoto(photoId: Long): PhotoItem = uiState.photos.firstOrNull { it.id == photoId }
@@ -291,6 +323,7 @@ data class AppUiState(
     val uploadState: UploadUiState = UploadUiState(),
     val myState: MyUiState = MyUiState(),
     val viewerState: ViewerUiState = ViewerUiState(),
+    val suggestionState: SuggestionUiState = SuggestionUiState(),
 )
 
 data class FeedUiState(
@@ -336,4 +369,8 @@ data class ViewerUiState(
     val detail: PhotoDetail? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+)
+
+data class SuggestionUiState(
+    val itemsByField: Map<String, List<SearchSuggestion>> = emptyMap(),
 )
