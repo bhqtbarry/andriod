@@ -1,16 +1,20 @@
 package cn.syphotos.android.ui.state
 
+import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cn.syphotos.android.data.FakeSyPhotosRepository
+import cn.syphotos.android.data.SessionStore
 import cn.syphotos.android.data.SyPhotosRepository
 import cn.syphotos.android.data.WebSyPhotosRepository
+import cn.syphotos.android.model.AuthSession
 import cn.syphotos.android.model.CategoryCount
 import cn.syphotos.android.model.DeviceSession
 import cn.syphotos.android.model.MapCluster
+import cn.syphotos.android.model.MySummaryStats
 import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoItem
@@ -22,9 +26,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class AppViewModel(
-    private val fallbackRepository: SyPhotosRepository = FakeSyPhotosRepository(),
-    private val webRepository: SyPhotosRepository = WebSyPhotosRepository(),
-) : ViewModel() {
+    application: Application,
+) : AndroidViewModel(application) {
+    private val fallbackRepository: SyPhotosRepository = FakeSyPhotosRepository()
+    private val sessionStore = SessionStore(application)
+    private val webRepository: SyPhotosRepository = WebSyPhotosRepository(sessionStore = sessionStore)
+
     var uiState by mutableStateOf(buildFallbackState())
         private set
 
@@ -36,6 +43,44 @@ class AppViewModel(
         uiState = uiState.copy(photoFilter = filter, feedState = uiState.feedState.copy(isLoading = true))
         refreshFeed(filter)
         refreshMap(filter)
+    }
+
+    fun login(login: String, password: String) {
+        uiState = uiState.copy(myState = uiState.myState.copy(isLoading = true, authErrorMessage = null))
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { webRepository.login(login, password) }
+            }.onSuccess { session ->
+                uiState = uiState.copy(
+                    myState = uiState.myState.copy(
+                        authSession = session,
+                        isLoading = false,
+                        authErrorMessage = null,
+                    ),
+                )
+                refreshMy()
+            }.onFailure { error ->
+                uiState = uiState.copy(
+                    myState = uiState.myState.copy(
+                        isLoading = false,
+                        authErrorMessage = "Login failed: ${error.message}",
+                    ),
+                )
+            }
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { webRepository.logout() }
+            uiState = buildFallbackState().copy(
+                myState = buildFallbackMyState().copy(
+                    authSession = AuthSession(),
+                    errorMessage = null,
+                    authErrorMessage = null,
+                ),
+            )
+        }
     }
 
     fun toggleLike(photoId: Long) {
@@ -147,38 +192,37 @@ class AppViewModel(
     }
 
     private fun refreshUpload() {
-        uiState = uiState.copy(uploadState = uiState.uploadState.copy(isLoading = true, errorMessage = null))
-        viewModelScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) { webRepository.getUploadConfig() }
-            }.onSuccess { config ->
-                uiState = uiState.copy(
-                    uploadState = uiState.uploadState.copy(
-                        isLoading = false,
-                        config = config,
-                        errorMessage = null,
-                    ),
-                )
-            }.onFailure { error ->
-                uiState = uiState.copy(
-                    uploadState = uiState.uploadState.copy(
-                        isLoading = false,
-                        config = fallbackRepository.getUploadConfig(),
-                        errorMessage = "Upload config unavailable: ${error.message}",
-                    ),
-                )
-            }
-        }
+        uiState = uiState.copy(
+            uploadState = uiState.uploadState.copy(
+                isLoading = false,
+                config = fallbackRepository.getUploadConfig(),
+                errorMessage = "android_api_reference_zh: 当前没有可直接对接的 App 上传 API。",
+            ),
+        )
     }
 
     private fun refreshMy() {
+        if (!sessionStore.read().isLoggedIn) {
+            uiState = uiState.copy(
+                myState = buildFallbackMyState().copy(
+                    authSession = AuthSession(),
+                    isLoading = false,
+                    errorMessage = null,
+                    authErrorMessage = null,
+                ),
+            )
+            return
+        }
         uiState = uiState.copy(myState = uiState.myState.copy(isLoading = true, errorMessage = null))
         viewModelScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
+                    val summary = webRepository.getMySummary()
                     MyUiState(
-                        user = webRepository.getUserSummary(),
-                        works = webRepository.getPhotos(),
+                        authSession = webRepository.getAuthSession(),
+                        user = summary.first,
+                        summary = summary.second,
+                        works = openMyWorks(webRepository),
                         likedPhotos = webRepository.getMyLikes(),
                         pending = webRepository.getReviewItems("pending"),
                         rejected = webRepository.getReviewItems("rejected"),
@@ -214,14 +258,21 @@ class AppViewModel(
     }
 
     private fun buildFallbackMyState(): MyUiState {
+        val summary = fallbackRepository.getMySummary()
         return MyUiState(
-            user = fallbackRepository.getUserSummary(),
+            authSession = sessionStore.read(),
+            user = summary.first,
+            summary = summary.second,
             works = fallbackRepository.getPhotos(),
             likedPhotos = fallbackRepository.getMyLikes(),
             pending = fallbackRepository.getReviewItems("pending"),
             rejected = fallbackRepository.getReviewItems("rejected"),
             sessions = fallbackRepository.getDeviceSessions(),
         )
+    }
+
+    private fun openMyWorks(repository: SyPhotosRepository): List<PhotoItem> {
+        return repository.getReviewItems("all").map { it.photo }
     }
 }
 
@@ -262,7 +313,9 @@ data class UploadUiState(
 )
 
 data class MyUiState(
+    val authSession: AuthSession = AuthSession(),
     val user: UserSummary = UserSummary("", "", false),
+    val summary: MySummaryStats = MySummaryStats(),
     val works: List<PhotoItem> = emptyList(),
     val likedPhotos: List<PhotoItem> = emptyList(),
     val pending: List<ReviewItem> = emptyList(),
@@ -270,6 +323,7 @@ data class MyUiState(
     val sessions: List<DeviceSession> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val authErrorMessage: String? = null,
 )
 
 data class ViewerUiState(

@@ -65,6 +65,8 @@ fun AppNavHost(
                 state = viewModel.uiState.myState,
                 selectedLanguage = selectedLanguage,
                 onLanguageSelected = onLanguageSelected,
+                onLogin = viewModel::login,
+                onLogout = viewModel::logout,
             )
         }
         composable(

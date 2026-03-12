@@ -68,6 +68,9 @@ class AppStrings(
     val account get() = text("account")
     val userLabel get() = text("user_label")
     val emailLabel get() = text("email_label")
+    val passwordField get() = text("password_field")
+    val signIn get() = text("sign_in")
+    val signOut get() = text("sign_out")
     val loginLabel get() = text("login_label")
     val myWorks get() = text("my_works")
     val myLikes get() = text("my_likes")
@@ -192,6 +195,9 @@ class AppStrings(
             "account" to "Account",
             "user_label" to "User",
             "email_label" to "Email",
+            "password_field" to "Password",
+            "sign_in" to "Sign in",
+            "sign_out" to "Sign out",
             "login_label" to "Login",
             "my_works" to "My Works",
             "my_likes" to "My Likes",
@@ -279,6 +285,9 @@ class AppStrings(
                 "account" to "账号",
                 "user_label" to "用户",
                 "email_label" to "邮箱",
+                "password_field" to "密码",
+                "sign_in" to "登录",
+                "sign_out" to "退出登录",
                 "login_label" to "登录",
                 "my_works" to "我的作品",
                 "my_likes" to "我的喜欢",

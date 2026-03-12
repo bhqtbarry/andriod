@@ -67,6 +67,26 @@ data class UserSummary(
     val emailVerified: Boolean,
 )
 
+data class AuthSession(
+    val accessToken: String = "",
+    val refreshToken: String = "",
+    val accessTokenExpiresAt: String = "",
+    val refreshTokenExpiresAt: String = "",
+    val username: String = "",
+    val email: String = "",
+) {
+    val isLoggedIn: Boolean get() = accessToken.isNotBlank() && refreshToken.isNotBlank()
+}
+
+data class MySummaryStats(
+    val allPhotos: Int = 0,
+    val approvedPhotos: Int = 0,
+    val pendingPhotos: Int = 0,
+    val rejectedPhotos: Int = 0,
+    val likedPhotos: Int = 0,
+    val unreadNotifications: Int = 0,
+)
+
 data class UploadConfig(
     val maxFileSizeMb: Int = 40,
     val minAspectRatio: String = "1:2",

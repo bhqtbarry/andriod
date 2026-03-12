@@ -3,10 +3,12 @@ package cn.syphotos.android.data
 import cn.syphotos.android.model.CategoryCount
 import cn.syphotos.android.model.DeviceSession
 import cn.syphotos.android.model.MapCluster
+import cn.syphotos.android.model.AuthSession
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ReviewItem
+import cn.syphotos.android.model.MySummaryStats
 import cn.syphotos.android.model.UploadConfig
 import cn.syphotos.android.model.UserSummary
 
@@ -26,6 +28,17 @@ class FakeSyPhotosRepository : SyPhotosRepository {
             liked = index % 4 == 0,
         )
     }
+
+    override fun getAuthSession(): AuthSession = AuthSession(
+        accessToken = "fake-access",
+        refreshToken = "fake-refresh",
+        username = "barry",
+        email = "barry@syphotos.cn",
+    )
+
+    override fun login(login: String, password: String): AuthSession = getAuthSession()
+
+    override fun logout() = Unit
 
     override fun getPhotos(filter: PhotoFilter): List<PhotoItem> {
         return photos.filter { photo ->
@@ -85,6 +98,20 @@ class FakeSyPhotosRepository : SyPhotosRepository {
     }
 
     override fun getUploadConfig(): UploadConfig = UploadConfig()
+
+    override fun getMySummary(): Pair<UserSummary, MySummaryStats> {
+        return Pair(
+            getUserSummary(),
+            MySummaryStats(
+                allPhotos = photos.size,
+                approvedPhotos = photos.size - 2,
+                pendingPhotos = 1,
+                rejectedPhotos = 1,
+                likedPhotos = photos.count { it.liked },
+                unreadNotifications = 0,
+            ),
+        )
+    }
 
     override fun getReviewItems(status: String): List<ReviewItem> {
         return listOf(
