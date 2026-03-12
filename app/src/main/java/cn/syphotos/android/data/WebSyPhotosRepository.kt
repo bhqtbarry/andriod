@@ -98,6 +98,12 @@ class WebSyPhotosRepository(
                 )
             },
             description = item.optString("description"),
+            shootingTime = item.optString("shootingTime").ifBlank { item.optString("shooting_time") },
+            focalLength = item.optString("focalLength").ifBlank { item.optString("focal_length") },
+            iso = item.optString("iso"),
+            aperture = item.optString("aperture"),
+            shutter = item.optString("shutter"),
+            score = item.optString("score"),
         )
     }
 

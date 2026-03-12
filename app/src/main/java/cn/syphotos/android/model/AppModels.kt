@@ -34,6 +34,12 @@ data class PhotoDetail(
     val originalUrl: String = "",
     val shareUrl: String = "",
     val description: String = "",
+    val shootingTime: String = "",
+    val focalLength: String = "",
+    val iso: String = "",
+    val aperture: String = "",
+    val shutter: String = "",
+    val score: String = "",
 )
 
 data class CategoryCount(

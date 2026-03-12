@@ -84,8 +84,12 @@ fun AppNavHost(
             PhotoViewerScreen(
                 state = viewModel.uiState.viewerState,
                 fallbackPhotoTitle = viewModel.findPhoto(photoId).title,
-                onBack = { navController.popBackStack() },
                 onToggleLike = { viewModel.toggleLike(photoId) },
+                onApplyFilter = { filter ->
+                    viewModel.updateFilter(filter)
+                    navController.popBackStack()
+                    navController.navigate(AppDestination.AllPhotos.route)
+                },
             )
         }
     }

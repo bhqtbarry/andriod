@@ -69,6 +69,12 @@ class FakeSyPhotosRepository : SyPhotosRepository {
             originalUrl = photo.originalUrl,
             shareUrl = photo.shareUrl,
             description = "${photo.airline} ${photo.aircraftModel} at ${photo.location}",
+            shootingTime = "2026:03:12 17:00:00",
+            focalLength = "200",
+            iso = "320",
+            aperture = "5.6",
+            shutter = "1/1250",
+            score = "4",
         )
     }
 

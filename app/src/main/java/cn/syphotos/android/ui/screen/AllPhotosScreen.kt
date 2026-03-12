@@ -327,7 +327,6 @@ private fun PhotoCard(
     onOpenPhoto: (Long) -> Unit,
     onToggleLike: (Long) -> Unit,
 ) {
-    val strings = LocalAppStrings.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -352,33 +351,6 @@ private fun PhotoCard(
             ) {
                 Text(photo.title, modifier = Modifier.padding(8.dp), style = MaterialTheme.typography.bodySmall)
             }
-        }
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .background(Color.Black.copy(alpha = 0.42f))
-                .padding(horizontal = 6.dp, vertical = 5.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = photo.registration.ifBlank { photo.title },
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White,
-                maxLines = 1,
-            )
-            Text(
-                text = "${photo.location} • ${photo.author}",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.9f),
-                maxLines = 1,
-            )
-            Text(
-                text = if (photo.liked) strings.tapToUnlike else strings.tapToLike,
-                color = Color.White,
-                modifier = Modifier.clickable { onToggleLike(photo.id) },
-                style = MaterialTheme.typography.labelSmall,
-            )
         }
     }
 }
