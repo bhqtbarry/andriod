@@ -37,7 +37,10 @@ fun AppNavHost(
             AllPhotosScreen(
                 state = viewModel.uiState,
                 onFilterChange = viewModel::updateFilter,
-                onOpenPhoto = onOpenPhoto,
+                onOpenPhoto = { photoId ->
+                    viewModel.prefetchPhotoDetail(photoId)
+                    onOpenPhoto(photoId)
+                },
                 onToggleLike = viewModel::toggleLike,
             )
         }
@@ -52,7 +55,7 @@ fun AppNavHost(
             )
         }
         composable(AppDestination.Upload.route) {
-            UploadScreen(state = viewModel.uiState.uploadDraft)
+            UploadScreen(state = viewModel.uiState.uploadState)
         }
         composable(AppDestination.Category.route) {
             CategoryScreen(state = viewModel.uiState.categoryState)
@@ -71,7 +74,8 @@ fun AppNavHost(
         ) { backStackEntry ->
             val photoId = backStackEntry.arguments?.getLong("photoId") ?: selectedPhotoId ?: return@composable
             PhotoViewerScreen(
-                photo = viewModel.findPhoto(photoId),
+                state = viewModel.uiState.viewerState,
+                fallbackPhotoTitle = viewModel.findPhoto(photoId).title,
                 onBack = { navController.popBackStack() },
                 onToggleLike = { viewModel.toggleLike(photoId) },
             )

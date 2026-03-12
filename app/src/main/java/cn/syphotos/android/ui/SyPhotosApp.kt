@@ -26,7 +26,6 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import cn.syphotos.android.ui.components.LanguageSwitcher
 import cn.syphotos.android.ui.i18n.AppLanguage
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.i18n.rememberAppStrings
@@ -62,13 +61,6 @@ fun SyPhotosApp() {
                                 Text(strings.pageTitle(currentDestination?.route))
                                 Text(strings.pageSubtitle(currentDestination?.route))
                             }
-                        },
-                        actions = {
-                            LanguageSwitcher(
-                                strings = strings,
-                                selectedLanguage = selectedLanguage,
-                                onLanguageSelected = { languageCode = it.code },
-                            )
                         },
                     )
                 }

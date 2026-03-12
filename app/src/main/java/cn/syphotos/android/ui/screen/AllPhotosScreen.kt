@@ -80,14 +80,14 @@ fun AllPhotosScreen(
                     onFilterChange = onFilterChange,
                 )
             }
-            state.errorMessage?.let { message ->
+            state.feedState.errorMessage?.let { message ->
                 item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
                     Surface(
                         color = MaterialTheme.colorScheme.errorContainer,
                         shape = MaterialTheme.shapes.large,
                     ) {
                         Text(
-                            text = if (state.usingFallbackData) "$message\nShowing local fallback data." else message,
+                            text = if (state.feedState.usingFallbackData) "$message\nShowing local fallback data." else message,
                             modifier = Modifier.padding(12.dp),
                             color = MaterialTheme.colorScheme.onErrorContainer,
                         )
@@ -98,7 +98,7 @@ fun AllPhotosScreen(
                 PhotoCard(photo = photo, onOpenPhoto = onOpenPhoto, onToggleLike = onToggleLike)
             }
         }
-        if (state.isLoading) {
+        if (state.feedState.isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         }
     }

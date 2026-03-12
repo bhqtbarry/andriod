@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -47,6 +49,28 @@ fun MyScreen(
                 Text("${strings.emailLabel}: ${state.user.email}")
                 Text(if (state.user.emailVerified) strings.emailVerified else strings.emailVerificationRequired)
                 Text(strings.passwordChange)
+            }
+        }
+        state.errorMessage?.let { message ->
+            item {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Text(
+                        text = message,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
+            }
+        }
+        if (state.isLoading) {
+            item {
+                CircularProgressIndicator(modifier = Modifier.padding(horizontal = 16.dp))
             }
         }
         item {

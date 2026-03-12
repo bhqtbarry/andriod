@@ -2,9 +2,12 @@ package cn.syphotos.android.data
 
 import cn.syphotos.android.model.CategoryCount
 import cn.syphotos.android.model.DeviceSession
+import cn.syphotos.android.model.MapCluster
 import cn.syphotos.android.model.PhotoFilter
+import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ReviewItem
+import cn.syphotos.android.model.UploadConfig
 import cn.syphotos.android.model.UserSummary
 
 class FakeSyPhotosRepository : SyPhotosRepository {
@@ -41,6 +44,16 @@ class FakeSyPhotosRepository : SyPhotosRepository {
         }
     }
 
+    override fun getPhotoDetail(photoId: Long): PhotoDetail {
+        val photo = photos.first { it.id == photoId }
+        return PhotoDetail(
+            photo = photo,
+            originalUrl = "https://www.syphotos.cn/photo/$photoId",
+            shareUrl = "https://www.syphotos.cn/photo/$photoId",
+            description = "${photo.airline} ${photo.aircraftModel} at ${photo.location}",
+        )
+    }
+
     override fun getCategoryCounts(): Pair<List<CategoryCount>, List<CategoryCount>> {
         return Pair(
             listOf(
@@ -55,6 +68,23 @@ class FakeSyPhotosRepository : SyPhotosRepository {
             ),
         )
     }
+
+    override fun getMapClusters(filter: PhotoFilter): List<MapCluster> {
+        return getPhotos(filter)
+            .groupBy { it.location }
+            .map { (location, items) ->
+                MapCluster(
+                    id = location,
+                    name = location,
+                    level = "airport",
+                    photoCount = items.size,
+                    locationCode = location,
+                )
+            }
+            .sortedByDescending { it.photoCount }
+    }
+
+    override fun getUploadConfig(): UploadConfig = UploadConfig()
 
     override fun getReviewItems(status: String): List<ReviewItem> {
         return listOf(

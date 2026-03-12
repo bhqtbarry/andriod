@@ -4,7 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val syPhotosBaseUrl = (findProperty("SY_PHOTOS_BASE_URL") as String?) ?: "http://10.0.2.2/api/app/v1/"
+val syPhotosBaseUrl = (findProperty("SY_PHOTOS_BASE_URL") as String?) ?: "https://www.syphotos.cn/api/app/v1/"
 
 android {
     namespace = "cn.syphotos.android"

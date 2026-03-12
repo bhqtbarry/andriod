@@ -25,9 +25,24 @@ data class PhotoItem(
     val liked: Boolean,
 )
 
+data class PhotoDetail(
+    val photo: PhotoItem,
+    val originalUrl: String = "",
+    val shareUrl: String = "",
+    val description: String = "",
+)
+
 data class CategoryCount(
     val name: String,
     val count: Int,
+)
+
+data class MapCluster(
+    val id: String,
+    val name: String,
+    val level: String,
+    val photoCount: Int,
+    val locationCode: String,
 )
 
 data class ReviewItem(
@@ -52,3 +67,12 @@ data class UserSummary(
     val emailVerified: Boolean,
 )
 
+data class UploadConfig(
+    val maxFileSizeMb: Int = 40,
+    val minAspectRatio: String = "1:2",
+    val maxAspectRatio: String = "2:1",
+    val exifEnabled: Boolean = true,
+    val watermarkEnabled: Boolean = true,
+    val registrationOcrEnabled: Boolean = true,
+    val uploadUrl: String = "",
+)
