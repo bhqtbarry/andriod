@@ -9,7 +9,7 @@ private const val APP_NAME = "SY Photos"
 
 @Immutable
 class AppStrings(
-    val language: AppLanguage,
+    val appLanguage: AppLanguage,
     private val values: Map<String, String>,
 ) {
     val appName get() = APP_NAME

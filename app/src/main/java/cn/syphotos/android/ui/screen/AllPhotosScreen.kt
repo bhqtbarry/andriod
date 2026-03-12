@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+
 package cn.syphotos.android.ui.screen
 
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -37,7 +39,6 @@ import cn.syphotos.android.ui.components.MetricPill
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.AppUiState
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun AllPhotosScreen(
     state: AppUiState,
