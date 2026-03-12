@@ -9,6 +9,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import androidx.navigation.navDeepLink
+import cn.syphotos.android.ui.i18n.AppLanguage
 import cn.syphotos.android.ui.screen.AllPhotosScreen
 import cn.syphotos.android.ui.screen.CategoryScreen
 import cn.syphotos.android.ui.screen.MapScreen
@@ -23,6 +24,8 @@ fun AppNavHost(
     modifier: Modifier = Modifier,
     selectedPhotoId: Long?,
     onOpenPhoto: (Long) -> Unit,
+    selectedLanguage: AppLanguage,
+    onLanguageSelected: (AppLanguage) -> Unit,
 ) {
     val viewModel: AppViewModel = viewModel()
     NavHost(
@@ -55,7 +58,11 @@ fun AppNavHost(
             CategoryScreen(state = viewModel.uiState.categoryState)
         }
         composable(AppDestination.My.route) {
-            MyScreen(state = viewModel.uiState.myState)
+            MyScreen(
+                state = viewModel.uiState.myState,
+                selectedLanguage = selectedLanguage,
+                onLanguageSelected = onLanguageSelected,
+            )
         }
         composable(
             route = AppDestination.PhotoViewer.route,

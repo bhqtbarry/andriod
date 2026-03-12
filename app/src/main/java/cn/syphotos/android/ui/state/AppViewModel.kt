@@ -72,12 +72,11 @@ data class CategoryUiState(
 )
 
 data class UploadDraftUiState(
-    val fileName: String = "Select one image <= 40 MB",
-    val ratioRule: String = "Accepted ratio: 1:2 to 2:1",
+    val fileName: String = "",
     val progress: Float = 0.42f,
-    val exifStatus: String = "EXIF auto extraction enabled",
-    val watermarkStatus: String = "Website watermark rules will be reused",
-    val registrationStatus: String = "Aircraft registration OCR placeholder",
+    val exifEnabled: Boolean = true,
+    val watermarkEnabled: Boolean = true,
+    val registrationOcrEnabled: Boolean = true,
 )
 
 data class MyUiState(

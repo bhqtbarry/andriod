@@ -1,61 +1,97 @@
 package cn.syphotos.android.ui.screen
 
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import cn.syphotos.android.ui.components.GradientHero
+import cn.syphotos.android.ui.i18n.AppLanguage
+import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.MyUiState
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MyScreen(state: MyUiState) {
+fun MyScreen(
+    state: MyUiState,
+    selectedLanguage: AppLanguage,
+    onLanguageSelected: (AppLanguage) -> Unit,
+) {
+    val strings = LocalAppStrings.current
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            SectionCard("Account") {
-                Text("User: ${state.user.username}")
-                Text("Email: ${state.user.email}")
-                Text(if (state.user.emailVerified) "Email verified" else "Email verification required")
-                Text("Password change supported in app auth flow")
+            GradientHero(
+                eyebrow = strings.navMy,
+                title = strings.myTitle,
+                subtitle = strings.mySubtitle,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+        }
+        item {
+            SectionCard(strings.account) {
+                Text("${strings.userLabel}: ${state.user.username}")
+                Text("${strings.emailLabel}: ${state.user.email}")
+                Text(if (state.user.emailVerified) strings.emailVerified else strings.emailVerificationRequired)
+                Text(strings.passwordChange)
             }
         }
         item {
-            SectionCard("My Works") {
-                Text("Approved / pending / rejected filtering should live here")
-                Text("Current loaded works: ${state.works.size}")
+            SectionCard(strings.myWorks) {
+                Text(strings.worksCount(state.works.size))
             }
         }
         item {
-            SectionCard("My Likes") {
-                Text("Liked photos: ${state.likedPhotos.size}")
+            SectionCard(strings.myLikes) {
+                Text(strings.likesCount(state.likedPhotos.size))
             }
         }
         item {
-            SectionCard("Pending") {
-                Text("Editable items: ${state.pending.size}")
+            SectionCard(strings.pending) {
+                Text(strings.editableCount(state.pending.size))
             }
         }
         item {
-            SectionCard("Rejected") {
+            SectionCard(strings.rejected) {
                 state.rejected.forEach {
-                    Text("Reason: ${it.rejectionReason ?: "-"}")
-                    Text("Admin: ${it.adminComment ?: "-"}")
+                    Text(strings.reason(it.rejectionReason ?: "-"))
+                    Text(strings.admin(it.adminComment ?: "-"))
                 }
             }
         }
         item {
-            SectionCard("Devices") {
-                Text("Current + revocable sessions")
+            SectionCard(strings.languageTitle) {
+                Text(strings.languageSubtitle)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    AppLanguage.entries.forEach { language ->
+                        FilterChip(
+                            selected = language == selectedLanguage,
+                            onClick = { onLanguageSelected(language) },
+                            label = { Text(language.nativeName) },
+                        )
+                    }
+                }
+            }
+        }
+        item {
+            SectionCard(strings.devices) {
+                Text("${strings.currentDevice} + ${strings.revocable}")
             }
         }
         items(state.sessions, key = { it.id }) { session ->
@@ -67,8 +103,8 @@ fun MyScreen(state: MyUiState) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(session.deviceName, style = MaterialTheme.typography.titleMedium)
                     Text("${session.systemVersion} • ${session.ipAddress}")
-                    Text("Login: ${session.loginTime}")
-                    Text(if (session.isCurrent) "Current device" else "Revocable")
+                    Text("${strings.loginLabel}: ${session.loginTime}")
+                    Text(if (session.isCurrent) strings.currentDevice else strings.revocable)
                 }
             }
         }
@@ -94,4 +130,3 @@ private fun SectionCard(
         }
     }
 }
-
