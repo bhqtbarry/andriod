@@ -23,6 +23,10 @@ data class PhotoItem(
     val lens: String,
     val createdAt: String,
     val liked: Boolean,
+    val thumbUrl: String = "",
+    val originalUrl: String = "",
+    val detailUrl: String = "",
+    val shareUrl: String = "",
 )
 
 data class PhotoDetail(

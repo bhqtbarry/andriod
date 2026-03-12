@@ -26,6 +26,10 @@ class FakeSyPhotosRepository : SyPhotosRepository {
             lens = "70-200mm F2.8",
             createdAt = "2026-03-${(index % 9) + 1}",
             liked = index % 4 == 0,
+            thumbUrl = "https://picsum.photos/seed/syphotos-thumb-${index + 1}/600/300",
+            originalUrl = "https://picsum.photos/seed/syphotos-original-${index + 1}/1600/800",
+            detailUrl = "https://www.syphotos.cn/photo_detail.php?id=${index + 1}",
+            shareUrl = "https://www.syphotos.cn/photo_detail.php?id=${index + 1}",
         )
     }
 
@@ -61,8 +65,8 @@ class FakeSyPhotosRepository : SyPhotosRepository {
         val photo = photos.first { it.id == photoId }
         return PhotoDetail(
             photo = photo,
-            originalUrl = "https://www.syphotos.cn/photo/$photoId",
-            shareUrl = "https://www.syphotos.cn/photo/$photoId",
+            originalUrl = photo.originalUrl,
+            shareUrl = photo.shareUrl,
             description = "${photo.airline} ${photo.aircraftModel} at ${photo.location}",
         )
     }

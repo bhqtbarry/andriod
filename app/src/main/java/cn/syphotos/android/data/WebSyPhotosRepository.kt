@@ -86,8 +86,16 @@ class WebSyPhotosRepository(
         val photo = item.toPhotoItem()
         return PhotoDetail(
             photo = photo,
-            originalUrl = normalizeUrl(item.optString("originalUrl").ifBlank { item.optString("original_url") }),
-            shareUrl = normalizeUrl(item.optString("shareUrl").ifBlank { item.optString("share_url") }.ifBlank { "https://www.syphotos.cn/photo_detail.php?id=$photoId" }),
+            originalUrl = photo.originalUrl.ifBlank {
+                normalizeUrl(item.optString("originalUrl").ifBlank { item.optString("original_url") })
+            },
+            shareUrl = photo.shareUrl.ifBlank {
+                normalizeUrl(
+                    item.optString("shareUrl")
+                        .ifBlank { item.optString("share_url") }
+                        .ifBlank { "https://www.syphotos.cn/photo_detail.php?id=$photoId" },
+                )
+            },
             description = item.optString("description"),
         )
     }
@@ -268,6 +276,10 @@ class WebSyPhotosRepository(
             lens = optString("lens").ifBlank { optString("lens_model") },
             createdAt = optString("createdAt").ifBlank { optString("created_at") },
             liked = optBoolean("liked", false),
+            thumbUrl = normalizeUrl(optString("thumbUrl").ifBlank { optString("thumb_url") }),
+            originalUrl = normalizeUrl(optString("originalUrl").ifBlank { optString("original_url") }),
+            detailUrl = normalizeUrl(optString("detailUrl").ifBlank { optString("detail_url") }),
+            shareUrl = normalizeUrl(optString("shareUrl").ifBlank { optString("share_url") }),
         )
     }
 
