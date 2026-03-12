@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
@@ -36,6 +37,7 @@ import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.ViewerUiState
 import coil3.compose.AsyncImage
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoViewerScreen(
     state: ViewerUiState,
