@@ -14,6 +14,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import cn.syphotos.android.model.PhotoFilter
+import cn.syphotos.android.ui.components.GradientHero
+import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.AppUiState
 
 @Composable
@@ -22,30 +24,34 @@ fun MapScreen(
     onFilterChange: (PhotoFilter) -> Unit,
     onApplyMapSelection: (String) -> Unit,
 ) {
+    val strings = LocalAppStrings.current
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Map clusters placeholder", style = MaterialTheme.typography.headlineSmall)
-        Text("Expected hierarchy: country -> province/state -> city. Marker tap should jump into All Photos with shared filters.")
+        GradientHero(
+            eyebrow = strings.navMap,
+            title = strings.mapTitle,
+            subtitle = strings.mapSubtitle,
+        )
+        Text(strings.mapClusters, style = MaterialTheme.typography.bodyLarge)
         OutlinedTextField(
             value = state.photoFilter.locationCode,
             onValueChange = { onFilterChange(state.photoFilter.copy(locationCode = it)) },
-            label = { Text("Location / IATA") },
+            label = { Text(strings.location) },
             modifier = Modifier.fillMaxWidth(),
         )
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Initial location strategy")
-                Text("1. Request precise location permission")
-                Text("2. If denied, infer country from app language")
+                Text(strings.mapStrategy, style = MaterialTheme.typography.titleMedium)
+                Text(strings.mapStepPermission)
+                Text(strings.mapStepLanguage)
                 Button(onClick = { onApplyMapSelection("CGK") }) {
-                    Text("Simulate marker tap for CGK")
+                    Text(strings.simulateMarker)
                 }
             }
         }
     }
 }
-

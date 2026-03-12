@@ -8,49 +8,54 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import cn.syphotos.android.ui.components.GradientHero
+import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.UploadDraftUiState
 
 @Composable
 fun UploadScreen(state: UploadDraftUiState) {
+    val strings = LocalAppStrings.current
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Single image upload", style = MaterialTheme.typography.headlineSmall)
+        GradientHero(
+            eyebrow = strings.navUpload,
+            title = strings.uploadTitle,
+            subtitle = strings.uploadSubtitle,
+        )
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(state.fileName)
-                Text(state.ratioRule)
-                Text(state.exifStatus)
-                Text(state.watermarkStatus)
-                Text(state.registrationStatus)
+                Text(if (state.fileName.isBlank()) strings.noImageSelected else state.fileName)
+                Text(strings.ratioRule)
+                if (state.exifEnabled) Text(strings.exifEnabled)
+                if (state.watermarkEnabled) Text(strings.watermarkEnabled)
+                if (state.registrationOcrEnabled) Text(strings.registrationOcr)
                 LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
-                Text("Retry-supported upload enters review flow after success.")
+                Text(strings.retryInfo)
                 Button(onClick = { }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Choose Image")
+                    Text(strings.chooseImage)
                 }
                 OutlinedButton(onClick = { }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Retry Upload")
+                    Text(strings.retryUpload)
                 }
             }
         }
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Deletion rules")
-                Text("Irreversible, second confirmation required, title text match required.")
-                Text("Pending: editable/deletable")
-                Text("Rejected: deletable only, reupload required")
-                Text("Approved: deletable only")
+                Text(strings.deletionRules)
+                Text(strings.irreversibleRule)
+                Text(strings.pendingRule)
+                Text(strings.rejectedRule)
+                Text(strings.approvedRule)
             }
         }
     }
 }
-

@@ -2,6 +2,7 @@ package cn.syphotos.android.ui.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import cn.syphotos.android.model.PhotoItem
+import cn.syphotos.android.ui.i18n.LocalAppStrings
 
 @Composable
 fun PhotoViewerScreen(
@@ -29,6 +31,7 @@ fun PhotoViewerScreen(
     onBack: () -> Unit,
     onToggleLike: () -> Unit,
 ) {
+    val strings = LocalAppStrings.current
     var zoomStep by rememberSaveable { mutableIntStateOf(0) }
     var showUi by rememberSaveable { mutableIntStateOf(1) }
     Surface(
@@ -45,32 +48,39 @@ fun PhotoViewerScreen(
                     },
                 )
             },
-        color = MaterialTheme.colorScheme.background,
+        color = MaterialTheme.colorScheme.scrim,
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+                .background(MaterialTheme.colorScheme.scrim),
         ) {
-            if (showUi == 1) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Original viewer placeholder", style = MaterialTheme.typography.headlineSmall)
-                    Text(photo.title)
-                    Text("${photo.author} • ${photo.airline}")
-                    Text("Zoom state: ${listOf("Fit screen", "Zoom 1", "Zoom 2")[zoomStep]}")
-                    Text("Planned: preload next 5 originals, 200 MB original cache, 100 MB thumbnail cache.")
-                    Text("Share output should use HTTPS web detail link.")
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Button(onClick = onBack) { Text("Back") }
-                    Button(onClick = onToggleLike) { Text(if (photo.liked) "Unlike" else "Like") }
-                    Button(onClick = { }) { Text("Author") }
-                    Button(onClick = { }) { Text("Share") }
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                if (showUi == 1) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(strings.viewerTitle, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimary)
+                        Text(photo.title, color = MaterialTheme.colorScheme.onPrimary)
+                        Text("${photo.author} • ${photo.airline}", color = MaterialTheme.colorScheme.onPrimary)
+                        Text(strings.zoomState(listOf("Fit", "1x", "2x")[zoomStep]), color = MaterialTheme.colorScheme.onPrimary)
+                        Text(strings.viewerHint, color = MaterialTheme.colorScheme.onPrimary)
+                        Text(strings.preloadHint, color = MaterialTheme.colorScheme.onPrimary)
+                        Text(strings.shareHint, color = MaterialTheme.colorScheme.onPrimary)
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Button(onClick = onBack) { Text(strings.back) }
+                        Button(onClick = onToggleLike) { Text(if (photo.liked) strings.unlike else strings.like) }
+                        Button(onClick = { }) { Text(strings.authorAction) }
+                        Button(onClick = { }) { Text(strings.share) }
+                    }
                 }
             }
         }
