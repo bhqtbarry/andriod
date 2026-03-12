@@ -84,16 +84,22 @@ class AppViewModel(
     }
 
     fun toggleLike(photoId: Long) {
-        val updatedPhotos = uiState.photos.map {
+        val currentState = uiState
+        val updatedPhotos = currentState.photos.map {
             if (it.id == photoId) it.copy(liked = !it.liked) else it
         }
-        val updatedViewer = uiState.viewerState.detail?.takeIf { it.photo.id == photoId }?.copy(
-            photo = updatedPhotos.firstOrNull { photo -> photo.id == photoId } ?: uiState.viewerState.detail.photo,
-        )
-        uiState = uiState.copy(
+        val currentDetail = currentState.viewerState.detail
+        val updatedViewer = if (currentDetail?.photo?.id == photoId) {
+            currentDetail.copy(
+                photo = updatedPhotos.firstOrNull { it.id == photoId } ?: currentDetail.photo,
+            )
+        } else {
+            currentDetail
+        }
+        uiState = currentState.copy(
             photos = updatedPhotos,
-            myState = uiState.myState.copy(likedPhotos = updatedPhotos.filter { it.liked }),
-            viewerState = uiState.viewerState.copy(detail = updatedViewer),
+            myState = currentState.myState.copy(likedPhotos = updatedPhotos.filter { it.liked }),
+            viewerState = currentState.viewerState.copy(detail = updatedViewer),
         )
     }
 
