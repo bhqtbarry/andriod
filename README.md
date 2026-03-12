@@ -14,3 +14,9 @@ Environment requirements:
 
 Next integration step:
 - Replace `FakeSyPhotosRepository` with `/api/app/v1/...` backend services
+
+Current web service integration:
+- Explore now requests `GET {BASE_URL}/photos`
+- Default `BASE_URL` is `http://10.0.2.2/api/app/v1/` for Android Emulator
+- Override with Gradle property: `-PSY_PHOTOS_BASE_URL=http://YOUR_HOST/api/app/v1/`
+- If you run on a physical device, replace `10.0.2.2` with your computer LAN IP

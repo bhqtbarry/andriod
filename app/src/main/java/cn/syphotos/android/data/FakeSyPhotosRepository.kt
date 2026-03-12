@@ -7,7 +7,7 @@ import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ReviewItem
 import cn.syphotos.android.model.UserSummary
 
-class FakeSyPhotosRepository {
+class FakeSyPhotosRepository : SyPhotosRepository {
     private val photos = List(18) { index ->
         PhotoItem(
             id = index + 1L,
@@ -24,7 +24,7 @@ class FakeSyPhotosRepository {
         )
     }
 
-    fun getPhotos(filter: PhotoFilter = PhotoFilter()): List<PhotoItem> {
+    override fun getPhotos(filter: PhotoFilter): List<PhotoItem> {
         return photos.filter { photo ->
             listOf(
                 filter.keyword to listOf(photo.title, photo.location),
@@ -41,7 +41,7 @@ class FakeSyPhotosRepository {
         }
     }
 
-    fun getCategoryCounts(): Pair<List<CategoryCount>, List<CategoryCount>> {
+    override fun getCategoryCounts(): Pair<List<CategoryCount>, List<CategoryCount>> {
         return Pair(
             listOf(
                 CategoryCount("Garuda Indonesia", 42),
@@ -56,7 +56,7 @@ class FakeSyPhotosRepository {
         )
     }
 
-    fun getReviewItems(status: String): List<ReviewItem> {
+    override fun getReviewItems(status: String): List<ReviewItem> {
         return listOf(
             ReviewItem(
                 photo = photos.first(),
@@ -67,16 +67,16 @@ class FakeSyPhotosRepository {
         )
     }
 
-    fun getMyLikes(): List<PhotoItem> = photos.filter { it.liked }
+    override fun getMyLikes(): List<PhotoItem> = photos.filter { it.liked }
 
-    fun getDeviceSessions(): List<DeviceSession> {
+    override fun getDeviceSessions(): List<DeviceSession> {
         return listOf(
             DeviceSession("current", "Pixel 8 Pro", "2026-03-12 10:45", "36.85.12.1", "Android 15", true),
             DeviceSession("old-1", "Galaxy S23", "2026-03-10 20:15", "36.90.11.2", "Android 14", false),
         )
     }
 
-    fun getUserSummary(): UserSummary {
+    override fun getUserSummary(): UserSummary {
         return UserSummary(
             username = "barry",
             email = "barry@syphotos.cn",
@@ -84,4 +84,3 @@ class FakeSyPhotosRepository {
         )
     }
 }
-

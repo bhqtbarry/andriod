@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,18 +18,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.item
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,35 +51,55 @@ fun AllPhotosScreen(
     onToggleLike: (Long) -> Unit,
 ) {
     val strings = LocalAppStrings.current
-    Column(modifier = Modifier.fillMaxSize()) {
-        GradientHero(
-            eyebrow = strings.trendingNow,
-            title = strings.allPhotosTitle,
-            subtitle = strings.allPhotosSubtitle,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            MetricPill(Icons.Outlined.AutoAwesome, strings.trendingNow, strings.photosCount(state.photos.count { it.liked }), Modifier.weight(1f))
-            MetricPill(Icons.Outlined.Schedule, strings.latestUploads, strings.photosCount(state.photos.size), Modifier.weight(1f))
-        }
-        PhotoFilterPanel(
-            filter = state.photoFilter,
-            onFilterChange = onFilterChange,
-        )
+    Box(modifier = Modifier.fillMaxSize()) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                GradientHero(
+                    eyebrow = strings.trendingNow,
+                    title = strings.allPhotosTitle,
+                    subtitle = strings.allPhotosSubtitle,
+                )
+            }
+            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    MetricPill(Icons.Outlined.AutoAwesome, strings.trendingNow, strings.photosCount(state.photos.count { it.liked }), Modifier.weight(1f))
+                    MetricPill(Icons.Outlined.Schedule, strings.latestUploads, strings.photosCount(state.photos.size), Modifier.weight(1f))
+                }
+            }
+            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                PhotoFilterPanel(
+                    filter = state.photoFilter,
+                    onFilterChange = onFilterChange,
+                )
+            }
+            state.errorMessage?.let { message ->
+                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        Text(
+                            text = if (state.usingFallbackData) "$message\nShowing local fallback data." else message,
+                            modifier = Modifier.padding(12.dp),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                    }
+                }
+            }
             items(state.photos, key = { it.id }) { photo ->
                 PhotoCard(photo = photo, onOpenPhoto = onOpenPhoto, onToggleLike = onToggleLike)
             }
+        }
+        if (state.isLoading) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         }
     }
 }

@@ -4,6 +4,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val syPhotosBaseUrl = (findProperty("SY_PHOTOS_BASE_URL") as String?) ?: "http://10.0.2.2/api/app/v1/"
+
 android {
     namespace = "cn.syphotos.android"
     compileSdk = 35
@@ -14,6 +16,8 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+
+        buildConfigField("String", "SY_PHOTOS_BASE_URL", "\"$syPhotosBaseUrl\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -42,6 +46,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -66,6 +71,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.navigation:navigation-compose:2.8.9")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
     implementation("com.google.android.material:material:1.12.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")

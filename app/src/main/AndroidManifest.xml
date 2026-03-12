@@ -10,7 +10,8 @@
         android:allowBackup="true"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SYPhotos">
+        android:theme="@style/Theme.SYPhotos"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -33,4 +34,3 @@
     </application>
 
 </manifest>
-
