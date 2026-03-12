@@ -1,0 +1,73 @@
+package cn.syphotos.android.ui.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
+import cn.syphotos.android.ui.screen.AllPhotosScreen
+import cn.syphotos.android.ui.screen.CategoryScreen
+import cn.syphotos.android.ui.screen.MapScreen
+import cn.syphotos.android.ui.screen.MyScreen
+import cn.syphotos.android.ui.screen.PhotoViewerScreen
+import cn.syphotos.android.ui.screen.UploadScreen
+import cn.syphotos.android.ui.state.AppViewModel
+
+@Composable
+fun AppNavHost(
+    navController: NavHostController,
+    modifier: Modifier = Modifier,
+    selectedPhotoId: Long?,
+    onOpenPhoto: (Long) -> Unit,
+) {
+    val viewModel: AppViewModel = viewModel()
+    NavHost(
+        navController = navController,
+        startDestination = AppDestination.AllPhotos.route,
+        modifier = modifier,
+    ) {
+        composable(AppDestination.AllPhotos.route) {
+            AllPhotosScreen(
+                state = viewModel.uiState,
+                onFilterChange = viewModel::updateFilter,
+                onOpenPhoto = onOpenPhoto,
+                onToggleLike = viewModel::toggleLike,
+            )
+        }
+        composable(AppDestination.Map.route) {
+            MapScreen(
+                state = viewModel.uiState,
+                onFilterChange = viewModel::updateFilter,
+                onApplyMapSelection = {
+                    viewModel.updateFilter(viewModel.uiState.photoFilter.copy(locationCode = it))
+                    navController.navigate(AppDestination.AllPhotos.route)
+                },
+            )
+        }
+        composable(AppDestination.Upload.route) {
+            UploadScreen(state = viewModel.uiState.uploadDraft)
+        }
+        composable(AppDestination.Category.route) {
+            CategoryScreen(state = viewModel.uiState.categoryState)
+        }
+        composable(AppDestination.My.route) {
+            MyScreen(state = viewModel.uiState.myState)
+        }
+        composable(
+            route = AppDestination.PhotoViewer.route,
+            arguments = listOf(navArgument("photoId") { type = NavType.LongType }),
+            deepLinks = listOf(navDeepLink { uriPattern = "https://syphotos.cn/photo/{photoId}" }),
+        ) { backStackEntry ->
+            val photoId = backStackEntry.arguments?.getLong("photoId") ?: selectedPhotoId ?: return@composable
+            PhotoViewerScreen(
+                photo = viewModel.findPhoto(photoId),
+                onBack = { navController.popBackStack() },
+                onToggleLike = { viewModel.toggleLike(photoId) },
+            )
+        }
+    }
+}
