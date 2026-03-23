@@ -1,6 +1,7 @@
 package cn.syphotos.android.ui.state
 
 import android.app.Application
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -22,6 +23,7 @@ import cn.syphotos.android.model.ReviewItem
 import cn.syphotos.android.model.SearchSuggestion
 import cn.syphotos.android.model.UploadConfig
 import cn.syphotos.android.model.UserSummary
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -31,7 +33,7 @@ class AppViewModel(
 ) : AndroidViewModel(application) {
     private val fallbackRepository: SyPhotosRepository = FakeSyPhotosRepository()
     private val sessionStore = SessionStore(application)
-    private val webRepository: SyPhotosRepository = WebSyPhotosRepository(sessionStore = sessionStore)
+    private val webRepository = WebSyPhotosRepository(sessionStore = sessionStore)
 
     var uiState by mutableStateOf(buildFallbackState())
         private set
@@ -156,10 +158,108 @@ class AppViewModel(
         )
     }
 
-    fun updateUploadSelection(fileName: String) {
+    fun updateUploadSelection(uri: String, fileName: String) {
         uiState = uiState.copy(
-            uploadState = uiState.uploadState.copy(fileName = fileName),
+            uploadState = uiState.uploadState.copy(
+                selectedImageUri = uri,
+                fileName = fileName,
+                errorMessage = null,
+                successMessage = null,
+            ),
         )
+    }
+
+    fun updateUploadDraft(update: (UploadUiState) -> UploadUiState) {
+        uiState = uiState.copy(uploadState = update(uiState.uploadState).copy(errorMessage = null, successMessage = null))
+    }
+
+    fun submitUpload() {
+        val uploadState = uiState.uploadState
+        val selectedUri = uploadState.selectedImageUri
+        if (!sessionStore.read().isLoggedIn) {
+            uiState = uiState.copy(uploadState = uploadState.copy(errorMessage = "请先登录后再上传。"))
+            return
+        }
+        if (selectedUri.isBlank()) {
+            uiState = uiState.copy(uploadState = uploadState.copy(errorMessage = "请选择图片。"))
+            return
+        }
+        if (
+            uploadState.title.isBlank() ||
+            uploadState.registrationNumber.isBlank() ||
+            uploadState.aircraftModel.isBlank() ||
+            uploadState.airline.isBlank() ||
+            uploadState.shootingTime.isBlank() ||
+            uploadState.shootingLocation.isBlank()
+        ) {
+            uiState = uiState.copy(uploadState = uploadState.copy(errorMessage = "请把必填项填写完整。"))
+            return
+        }
+        if (!uploadState.allowUse) {
+            uiState = uiState.copy(uploadState = uploadState.copy(errorMessage = "请先同意使用条款。"))
+            return
+        }
+
+        uiState = uiState.copy(uploadState = uploadState.copy(isLoading = true, errorMessage = null, successMessage = null))
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val resolver = getApplication<Application>().contentResolver
+                    val uri = Uri.parse(selectedUri)
+                    val mimeType = resolver.getType(uri).orEmpty().ifBlank { "image/jpeg" }
+                    val extension = when (mimeType) {
+                        "image/png" -> ".png"
+                        "image/gif" -> ".gif"
+                        else -> ".jpg"
+                    }
+                    val tempFile = File.createTempFile("syphotos-upload-", extension, getApplication<Application>().cacheDir)
+                    try {
+                        resolver.openInputStream(uri)?.use { input ->
+                            tempFile.outputStream().use { output -> input.copyTo(output) }
+                        } ?: throw IllegalStateException("无法读取所选图片。")
+
+                        webRepository.uploadPhoto(
+                            file = tempFile,
+                            originalName = uploadState.fileName.ifBlank { "upload$extension" },
+                            mimeType = mimeType,
+                            fields = linkedMapOf(
+                                "title" to uploadState.title,
+                                "registration_number" to uploadState.registrationNumber.uppercase(),
+                                "aircraft_model" to uploadState.aircraftModel,
+                                "category" to uploadState.airline,
+                                "shooting_time" to uploadState.shootingTime,
+                                "shooting_location" to uploadState.shootingLocation.uppercase(),
+                                "cameraModel" to uploadState.cameraModel,
+                                "lensModel" to uploadState.lensModel,
+                                "watermark_size" to uploadState.watermarkSize.toString(),
+                                "watermark_opacity" to uploadState.watermarkOpacity.toString(),
+                                "watermark_position" to uploadState.watermarkPosition,
+                                "watermark_color" to uploadState.watermarkColor,
+                                "watermark_author_style" to uploadState.watermarkAuthorStyle,
+                                "allow_use" to if (uploadState.allowUse) "1" else "",
+                            ),
+                        )
+                    } finally {
+                        tempFile.delete()
+                    }
+                }
+            }.onSuccess { message ->
+                uiState = uiState.copy(
+                    uploadState = UploadUiState(
+                        config = uiState.uploadState.config,
+                        successMessage = message,
+                    ),
+                )
+                refreshMy()
+            }.onFailure { error ->
+                uiState = uiState.copy(
+                    uploadState = uiState.uploadState.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "上传失败",
+                    ),
+                )
+            }
+        }
     }
 
     fun findPhoto(photoId: Long): PhotoItem = uiState.photos.firstOrNull { it.id == photoId }
@@ -230,13 +330,8 @@ class AppViewModel(
     }
 
     private fun refreshUpload() {
-        uiState = uiState.copy(
-            uploadState = uiState.uploadState.copy(
-                isLoading = false,
-                config = fallbackRepository.getUploadConfig(),
-                errorMessage = "android_api_reference_zh: 当前没有可直接对接的 App 上传 API。",
-            ),
-        )
+        val config = runCatching { webRepository.getUploadConfig() }.getOrElse { fallbackRepository.getUploadConfig() }
+        uiState = uiState.copy(uploadState = uiState.uploadState.copy(isLoading = false, config = config, errorMessage = null))
     }
 
     private fun refreshMy() {
@@ -344,11 +439,26 @@ data class MapUiState(
 )
 
 data class UploadUiState(
+    val selectedImageUri: String = "",
     val fileName: String = "",
-    val progress: Float = 0.42f,
+    val title: String = "",
+    val registrationNumber: String = "",
+    val aircraftModel: String = "",
+    val airline: String = "",
+    val shootingTime: String = "",
+    val shootingLocation: String = "",
+    val cameraModel: String = "",
+    val lensModel: String = "",
+    val watermarkSize: Int = 15,
+    val watermarkOpacity: Int = 80,
+    val watermarkPosition: String = "bottom-right",
+    val watermarkColor: String = "white",
+    val watermarkAuthorStyle: String = "default",
+    val allowUse: Boolean = true,
     val config: UploadConfig = UploadConfig(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
+    val successMessage: String? = null,
 )
 
 data class MyUiState(

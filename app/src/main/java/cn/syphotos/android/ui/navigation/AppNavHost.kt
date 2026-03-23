@@ -61,6 +61,8 @@ fun AppNavHost(
             UploadScreen(
                 state = viewModel.uiState.uploadState,
                 onChooseImage = viewModel::updateUploadSelection,
+                onDraftChange = viewModel::updateUploadDraft,
+                onSubmit = viewModel::submitUpload,
             )
         }
         composable(AppDestination.Category.route) {

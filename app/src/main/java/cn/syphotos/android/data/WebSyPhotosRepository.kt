@@ -17,6 +17,9 @@ import cn.syphotos.android.model.UserSummary
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedInputStream
+import java.io.BufferedWriter
+import java.io.File
+import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -166,7 +169,49 @@ class WebSyPhotosRepository(
     }
 
     override fun getUploadConfig(): UploadConfig {
-        throw UnsupportedOperationException("android_api_reference_zh: no app upload API is implemented yet")
+        return UploadConfig(
+            maxFileSizeMb = 45,
+            minAspectRatio = "1:2",
+            maxAspectRatio = "2:1",
+            exifEnabled = true,
+            watermarkEnabled = true,
+            registrationOcrEnabled = true,
+            uploadUrl = webUri("upload.php").toString(),
+        )
+    }
+
+    fun uploadPhoto(
+        file: File,
+        originalName: String,
+        mimeType: String,
+        fields: Map<String, String>,
+    ): String {
+        val html = openText(webUri("upload.php").toString())
+        val csrf = Regex("""name=["']csrf_token["']\s+value=["']([^"']+)["']""")
+            .find(html)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.trim()
+            .orEmpty()
+        if (csrf.isBlank()) {
+            throw IllegalStateException("Upload page session unavailable. Please sign in again.")
+        }
+
+        val response = submitMultipart(
+            url = webUri("upload.php").toString(),
+            fields = linkedMapOf<String, String>().apply {
+                put("csrf_token", csrf)
+                putAll(fields)
+            },
+            fileField = "photo",
+            file = file,
+            originalName = originalName,
+            mimeType = mimeType,
+        )
+
+        parseAlertMessage(response, "alert-success")?.let { return it }
+        parseAlertMessage(response, "alert-error")?.let { throw IllegalStateException(it) }
+        throw IllegalStateException("Upload failed. The server did not return a success message.")
     }
 
     override fun getMySummary(): Pair<UserSummary, MySummaryStats> {
@@ -274,7 +319,7 @@ class WebSyPhotosRepository(
             }
         }
 
-        return connection.useResponse { statusCode, body ->
+        return connection.useResponse { statusCode, body, _ ->
             if (requiresAuth && statusCode == 401 && retryAfterRefresh && refreshSession()) {
                 return@useResponse openJson(url, method, requiresAuth, formBody, retryAfterRefresh = false)
             }
@@ -369,6 +414,11 @@ class WebSyPhotosRepository(
 
     private fun apiUri(path: String): Uri = Uri.parse(baseUrl.trimEnd('/') + "/" + path.trimStart('/'))
 
+    private fun webUri(path: String): Uri {
+        val root = baseUrl.substringBefore("/api/app/v1").trimEnd('/')
+        return Uri.parse(root + "/" + path.trimStart('/'))
+    }
+
     private fun String.blankToNull(): String? = if (isBlank()) null else this
 
     private fun normalizeUrl(url: String): String {
@@ -407,11 +457,103 @@ class WebSyPhotosRepository(
         }.isSuccess
     }
 
-    private inline fun <T> HttpURLConnection.useResponse(block: (Int, String) -> T): T {
+    private fun openText(url: String): String {
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 8_000
+            readTimeout = 8_000
+            setRequestProperty("Accept", "text/html,application/xhtml+xml")
+            val cookieHeader = sessionStore.readCookieHeader()
+            if (cookieHeader.isNotBlank()) {
+                setRequestProperty("Cookie", cookieHeader)
+            }
+        }
+        return connection.useResponse { statusCode, body, _ ->
+            if (statusCode !in 200..299) {
+                throw IllegalStateException("HTTP $statusCode from $url")
+            }
+            body
+        }
+    }
+
+    private fun submitMultipart(
+        url: String,
+        fields: Map<String, String>,
+        fileField: String,
+        file: File,
+        originalName: String,
+        mimeType: String,
+    ): String {
+        val boundary = "----SyPhotosBoundary${System.currentTimeMillis()}"
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 15_000
+            readTimeout = 30_000
+            doOutput = true
+            setRequestProperty("Accept", "text/html,application/xhtml+xml")
+            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+            val cookieHeader = sessionStore.readCookieHeader()
+            if (cookieHeader.isNotBlank()) {
+                setRequestProperty("Cookie", cookieHeader)
+            }
+            chunkedStreamingMode = 0
+        }
+
+        connection.outputStream.use { output ->
+            val writer = BufferedWriter(OutputStreamWriter(output, Charsets.UTF_8))
+            fields.forEach { (name, value) ->
+                writer.append("--").append(boundary).append("\r\n")
+                writer.append("""Content-Disposition: form-data; name="$name"""").append("\r\n\r\n")
+                writer.append(value).append("\r\n")
+            }
+            writer.append("--").append(boundary).append("\r\n")
+            writer.append(
+                """Content-Disposition: form-data; name="$fileField"; filename="$originalName"""",
+            ).append("\r\n")
+            writer.append("Content-Type: ").append(mimeType).append("\r\n\r\n")
+            writer.flush()
+            file.inputStream().use { input -> input.copyTo(output) }
+            output.write("\r\n".toByteArray())
+            writer.append("--").append(boundary).append("--").append("\r\n")
+            writer.flush()
+        }
+
+        return connection.useResponse { statusCode, body, _ ->
+            if (statusCode !in 200..299) {
+                throw IllegalStateException("HTTP $statusCode from $url")
+            }
+            body
+        }
+    }
+
+    private fun parseAlertMessage(html: String, className: String): String? {
+        val raw = Regex("""<div[^>]*class=["'][^"']*\b$className\b[^"']*["'][^>]*>([\s\S]*?)</div>""")
+            .find(html)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.trim()
+            ?: return null
+        return raw
+            .replace(Regex("<[^>]+>"), " ")
+            .replace("&nbsp;", " ")
+            .replace("&amp;", "&")
+            .replace("&quot;", "\"")
+            .replace("&#039;", "'")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+    }
+
+    private inline fun <T> HttpURLConnection.useResponse(block: (Int, String, Map<String, List<String>>) -> T): T {
         return try {
             val stream = if (responseCode in 200..299) inputStream else errorStream
             val body = stream?.use { BufferedInputStream(it).reader().readText() }.orEmpty()
-            block(responseCode, body)
+            headerFields["Set-Cookie"]
+                ?.map { it.substringBefore(";").trim() }
+                ?.filter { it.contains("=") }
+                ?.takeIf { it.isNotEmpty() }
+                ?.joinToString("; ")
+                ?.let(sessionStore::mergeCookieHeader)
+            block(responseCode, body, headerFields)
         } finally {
             disconnect()
         }
