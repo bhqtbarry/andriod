@@ -37,7 +37,13 @@ fun AppNavHost(
             AllPhotosScreen(
                 state = viewModel.uiState,
                 onFilterChange = viewModel::updateFilter,
-                onOpenPhoto = onOpenPhoto,
+                suggestionsByField = viewModel.uiState.suggestionState.itemsByField,
+                onRequestSuggestions = viewModel::requestSuggestions,
+                onClearSuggestions = viewModel::clearSuggestions,
+                onOpenPhoto = { photoId ->
+                    viewModel.prefetchPhotoDetail(photoId)
+                    onOpenPhoto(photoId)
+                },
                 onToggleLike = viewModel::toggleLike,
             )
         }
@@ -52,7 +58,12 @@ fun AppNavHost(
             )
         }
         composable(AppDestination.Upload.route) {
-            UploadScreen(state = viewModel.uiState.uploadDraft)
+            UploadScreen(
+                state = viewModel.uiState.uploadState,
+                onChooseImage = viewModel::updateUploadSelection,
+                onDraftChange = viewModel::updateUploadDraft,
+                onSubmit = viewModel::submitUpload,
+            )
         }
         composable(AppDestination.Category.route) {
             CategoryScreen(state = viewModel.uiState.categoryState)
@@ -62,6 +73,8 @@ fun AppNavHost(
                 state = viewModel.uiState.myState,
                 selectedLanguage = selectedLanguage,
                 onLanguageSelected = onLanguageSelected,
+                onLogin = viewModel::login,
+                onLogout = viewModel::logout,
             )
         }
         composable(
@@ -71,9 +84,14 @@ fun AppNavHost(
         ) { backStackEntry ->
             val photoId = backStackEntry.arguments?.getLong("photoId") ?: selectedPhotoId ?: return@composable
             PhotoViewerScreen(
-                photo = viewModel.findPhoto(photoId),
-                onBack = { navController.popBackStack() },
+                state = viewModel.uiState.viewerState,
+                fallbackPhotoTitle = viewModel.findPhoto(photoId).title,
                 onToggleLike = { viewModel.toggleLike(photoId) },
+                onApplyFilter = { filter ->
+                    viewModel.updateFilter(filter)
+                    navController.popBackStack()
+                    navController.navigate(AppDestination.AllPhotos.route)
+                },
             )
         }
     }

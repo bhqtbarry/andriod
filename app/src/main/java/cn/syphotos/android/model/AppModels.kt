@@ -23,10 +23,43 @@ data class PhotoItem(
     val lens: String,
     val createdAt: String,
     val liked: Boolean,
+    val thumbUrl: String = "",
+    val originalUrl: String = "",
+    val detailUrl: String = "",
+    val shareUrl: String = "",
+)
+
+data class PhotoDetail(
+    val photo: PhotoItem,
+    val originalUrl: String = "",
+    val shareUrl: String = "",
+    val description: String = "",
+    val shootingTime: String = "",
+    val focalLength: String = "",
+    val iso: String = "",
+    val aperture: String = "",
+    val shutter: String = "",
+    val score: String = "",
 )
 
 data class CategoryCount(
     val name: String,
+    val count: Int,
+)
+
+data class MapCluster(
+    val id: String,
+    val name: String,
+    val level: String,
+    val photoCount: Int,
+    val locationCode: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+)
+
+data class SearchSuggestion(
+    val value: String,
+    val label: String,
     val count: Int,
 )
 
@@ -52,3 +85,32 @@ data class UserSummary(
     val emailVerified: Boolean,
 )
 
+data class AuthSession(
+    val accessToken: String = "",
+    val refreshToken: String = "",
+    val accessTokenExpiresAt: String = "",
+    val refreshTokenExpiresAt: String = "",
+    val username: String = "",
+    val email: String = "",
+) {
+    val isLoggedIn: Boolean get() = accessToken.isNotBlank() && refreshToken.isNotBlank()
+}
+
+data class MySummaryStats(
+    val allPhotos: Int = 0,
+    val approvedPhotos: Int = 0,
+    val pendingPhotos: Int = 0,
+    val rejectedPhotos: Int = 0,
+    val likedPhotos: Int = 0,
+    val unreadNotifications: Int = 0,
+)
+
+data class UploadConfig(
+    val maxFileSizeMb: Int = 40,
+    val minAspectRatio: String = "1:2",
+    val maxAspectRatio: String = "2:1",
+    val exifEnabled: Boolean = true,
+    val watermarkEnabled: Boolean = true,
+    val registrationOcrEnabled: Boolean = true,
+    val uploadUrl: String = "",
+)

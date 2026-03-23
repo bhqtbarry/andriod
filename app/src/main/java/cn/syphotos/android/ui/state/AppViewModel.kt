@@ -1,69 +1,430 @@
 package cn.syphotos.android.ui.state
 
+import android.app.Application
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import cn.syphotos.android.data.FakeSyPhotosRepository
+import cn.syphotos.android.data.SessionStore
+import cn.syphotos.android.data.SyPhotosRepository
+import cn.syphotos.android.data.WebSyPhotosRepository
+import cn.syphotos.android.model.AuthSession
 import cn.syphotos.android.model.CategoryCount
 import cn.syphotos.android.model.DeviceSession
+import cn.syphotos.android.model.MapCluster
+import cn.syphotos.android.model.MySummaryStats
+import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ReviewItem
+import cn.syphotos.android.model.SearchSuggestion
+import cn.syphotos.android.model.UploadConfig
 import cn.syphotos.android.model.UserSummary
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AppViewModel(
-    private val repository: FakeSyPhotosRepository = FakeSyPhotosRepository(),
-) : ViewModel() {
-    var uiState by mutableStateOf(buildState(PhotoFilter()))
+    application: Application,
+) : AndroidViewModel(application) {
+    private val fallbackRepository: SyPhotosRepository = FakeSyPhotosRepository()
+    private val sessionStore = SessionStore(application)
+    private val webRepository = WebSyPhotosRepository(sessionStore = sessionStore)
+
+    var uiState by mutableStateOf(buildFallbackState())
         private set
 
+    init {
+        refreshAll()
+    }
+
     fun updateFilter(filter: PhotoFilter) {
-        uiState = buildState(filter)
+        uiState = uiState.copy(photoFilter = filter, feedState = uiState.feedState.copy(isLoading = true))
+        refreshFeed(filter)
+        refreshMap(filter)
+    }
+
+    fun login(login: String, password: String) {
+        uiState = uiState.copy(myState = uiState.myState.copy(isLoading = true, authErrorMessage = null))
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { webRepository.login(login, password) }
+            }.onSuccess { session ->
+                uiState = uiState.copy(
+                    myState = uiState.myState.copy(
+                        authSession = session,
+                        isLoading = false,
+                        authErrorMessage = null,
+                    ),
+                )
+                refreshMy()
+            }.onFailure { error ->
+                uiState = uiState.copy(
+                    myState = uiState.myState.copy(
+                        isLoading = false,
+                        authErrorMessage = "Login failed: ${error.message}",
+                    ),
+                )
+            }
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { webRepository.logout() }
+            uiState = buildFallbackState().copy(
+                myState = buildFallbackMyState().copy(
+                    authSession = AuthSession(),
+                    errorMessage = null,
+                    authErrorMessage = null,
+                ),
+            )
+        }
     }
 
     fun toggleLike(photoId: Long) {
-        val updatedPhotos = uiState.photos.map {
+        val currentState = uiState
+        val updatedPhotos = currentState.photos.map {
             if (it.id == photoId) it.copy(liked = !it.liked) else it
         }
-        uiState = uiState.copy(
+        val currentDetail = currentState.viewerState.detail
+        val updatedViewer = if (currentDetail?.photo?.id == photoId) {
+            currentDetail.copy(
+                photo = updatedPhotos.firstOrNull { it.id == photoId } ?: currentDetail.photo,
+            )
+        } else {
+            currentDetail
+        }
+        uiState = currentState.copy(
             photos = updatedPhotos,
-            myState = uiState.myState.copy(likedPhotos = updatedPhotos.filter { it.liked }),
+            myState = currentState.myState.copy(likedPhotos = updatedPhotos.filter { it.liked }),
+            viewerState = currentState.viewerState.copy(detail = updatedViewer),
         )
     }
 
-    fun findPhoto(photoId: Long): PhotoItem = uiState.photos.firstOrNull { it.id == photoId }
-        ?: repository.getPhotos().first { it.id == photoId }
+    fun prefetchPhotoDetail(photoId: Long) {
+        uiState = uiState.copy(
+            viewerState = uiState.viewerState.copy(
+                detail = uiState.viewerState.detail ?: PhotoDetail(photo = findPhoto(photoId)),
+                isLoading = true,
+                errorMessage = null,
+            ),
+        )
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { webRepository.getPhotoDetail(photoId) }
+            }.onSuccess { detail ->
+                uiState = uiState.copy(
+                    viewerState = ViewerUiState(detail = detail, isLoading = false),
+                )
+            }.onFailure { error ->
+                uiState = uiState.copy(
+                    viewerState = ViewerUiState(
+                        detail = uiState.viewerState.detail ?: fallbackRepository.getPhotoDetail(photoId),
+                        isLoading = false,
+                        errorMessage = "Photo detail unavailable: ${error.message}",
+                    ),
+                )
+            }
+        }
+    }
 
-    private fun buildState(filter: PhotoFilter): AppUiState {
-        val photos = repository.getPhotos(filter)
-        val categories = repository.getCategoryCounts()
-        return AppUiState(
+    fun requestSuggestions(field: String, query: String) {
+        if (query.isBlank()) {
+            uiState = uiState.copy(
+                suggestionState = uiState.suggestionState.copy(itemsByField = uiState.suggestionState.itemsByField + (field to emptyList())),
+            )
+            return
+        }
+        viewModelScope.launch {
+            val items = runCatching {
+                withContext(Dispatchers.IO) { webRepository.getSuggestions(field, query, uiState.photoFilter) }
+            }.getOrElse {
+                fallbackRepository.getSuggestions(field, query, uiState.photoFilter)
+            }
+            uiState = uiState.copy(
+                suggestionState = uiState.suggestionState.copy(itemsByField = uiState.suggestionState.itemsByField + (field to items)),
+            )
+        }
+    }
+
+    fun clearSuggestions(field: String) {
+        uiState = uiState.copy(
+            suggestionState = uiState.suggestionState.copy(itemsByField = uiState.suggestionState.itemsByField + (field to emptyList())),
+        )
+    }
+
+    fun updateUploadSelection(uri: String, fileName: String) {
+        uiState = uiState.copy(
+            uploadState = uiState.uploadState.copy(
+                selectedImageUri = uri,
+                fileName = fileName,
+                errorMessage = null,
+                successMessage = null,
+            ),
+        )
+    }
+
+    fun updateUploadDraft(update: (UploadUiState) -> UploadUiState) {
+        uiState = uiState.copy(uploadState = update(uiState.uploadState).copy(errorMessage = null, successMessage = null))
+    }
+
+    fun submitUpload() {
+        val uploadState = uiState.uploadState
+        val selectedUri = uploadState.selectedImageUri
+        if (!sessionStore.read().isLoggedIn) {
+            uiState = uiState.copy(uploadState = uploadState.copy(errorMessage = "请先登录后再上传。"))
+            return
+        }
+        if (selectedUri.isBlank()) {
+            uiState = uiState.copy(uploadState = uploadState.copy(errorMessage = "请选择图片。"))
+            return
+        }
+        if (
+            uploadState.title.isBlank() ||
+            uploadState.registrationNumber.isBlank() ||
+            uploadState.aircraftModel.isBlank() ||
+            uploadState.airline.isBlank() ||
+            uploadState.shootingTime.isBlank() ||
+            uploadState.shootingLocation.isBlank()
+        ) {
+            uiState = uiState.copy(uploadState = uploadState.copy(errorMessage = "请把必填项填写完整。"))
+            return
+        }
+        if (!uploadState.allowUse) {
+            uiState = uiState.copy(uploadState = uploadState.copy(errorMessage = "请先同意使用条款。"))
+            return
+        }
+
+        uiState = uiState.copy(uploadState = uploadState.copy(isLoading = true, errorMessage = null, successMessage = null))
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val resolver = getApplication<Application>().contentResolver
+                    val uri = Uri.parse(selectedUri)
+                    val mimeType = resolver.getType(uri).orEmpty().ifBlank { "image/jpeg" }
+                    val extension = when (mimeType) {
+                        "image/png" -> ".png"
+                        "image/gif" -> ".gif"
+                        else -> ".jpg"
+                    }
+                    val tempFile = File.createTempFile("syphotos-upload-", extension, getApplication<Application>().cacheDir)
+                    try {
+                        resolver.openInputStream(uri)?.use { input ->
+                            tempFile.outputStream().use { output -> input.copyTo(output) }
+                        } ?: throw IllegalStateException("无法读取所选图片。")
+
+                        webRepository.uploadPhoto(
+                            file = tempFile,
+                            originalName = uploadState.fileName.ifBlank { "upload$extension" },
+                            mimeType = mimeType,
+                            fields = linkedMapOf(
+                                "title" to uploadState.title,
+                                "registration_number" to uploadState.registrationNumber.uppercase(),
+                                "aircraft_model" to uploadState.aircraftModel,
+                                "category" to uploadState.airline,
+                                "shooting_time" to uploadState.shootingTime,
+                                "shooting_location" to uploadState.shootingLocation.uppercase(),
+                                "cameraModel" to uploadState.cameraModel,
+                                "lensModel" to uploadState.lensModel,
+                                "watermark_size" to uploadState.watermarkSize.toString(),
+                                "watermark_opacity" to uploadState.watermarkOpacity.toString(),
+                                "watermark_position" to uploadState.watermarkPosition,
+                                "watermark_color" to uploadState.watermarkColor,
+                                "watermark_author_style" to uploadState.watermarkAuthorStyle,
+                                "allow_use" to if (uploadState.allowUse) "1" else "",
+                            ),
+                        )
+                    } finally {
+                        tempFile.delete()
+                    }
+                }
+            }.onSuccess { message ->
+                uiState = uiState.copy(
+                    uploadState = UploadUiState(
+                        config = uiState.uploadState.config,
+                        successMessage = message,
+                    ),
+                )
+                refreshMy()
+            }.onFailure { error ->
+                uiState = uiState.copy(
+                    uploadState = uiState.uploadState.copy(
+                        isLoading = false,
+                        errorMessage = error.message ?: "上传失败",
+                    ),
+                )
+            }
+        }
+    }
+
+    fun findPhoto(photoId: Long): PhotoItem = uiState.photos.firstOrNull { it.id == photoId }
+        ?: uiState.viewerState.detail?.photo?.takeIf { it.id == photoId }
+        ?: fallbackRepository.getPhotos().first { it.id == photoId }
+
+    private fun refreshAll() {
+        refreshFeed(uiState.photoFilter)
+        refreshMap(uiState.photoFilter)
+        refreshUpload()
+        refreshMy()
+    }
+
+    private fun refreshFeed(filter: PhotoFilter) {
+        uiState = uiState.copy(
             photoFilter = filter,
+            feedState = uiState.feedState.copy(isLoading = true, errorMessage = null),
+        )
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val photos = webRepository.getPhotos(filter)
+                    val categories = fallbackRepository.getCategoryCounts()
+                    Pair(photos, categories)
+                }
+            }.onSuccess { (photos, categories) ->
+                uiState = uiState.copy(
+                    photoFilter = filter,
+                    photos = photos,
+                    categoryState = CategoryUiState(
+                        airlines = categories.first,
+                        models = categories.second,
+                    ),
+                    feedState = FeedUiState(),
+                )
+            }.onFailure { error ->
+                val fallbackPhotos = fallbackRepository.getPhotos(filter)
+                uiState = uiState.copy(
+                    photoFilter = filter,
+                    photos = fallbackPhotos,
+                    feedState = FeedUiState(
+                        isLoading = false,
+                        errorMessage = "Photo feed unavailable: ${error.message}",
+                        usingFallbackData = true,
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun refreshMap(filter: PhotoFilter) {
+        uiState = uiState.copy(mapState = uiState.mapState.copy(isLoading = true, errorMessage = null))
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { webRepository.getMapClusters(filter) }
+            }.onSuccess { clusters ->
+                uiState = uiState.copy(mapState = MapUiState(clusters = clusters, isLoading = false))
+            }.onFailure { error ->
+                uiState = uiState.copy(
+                    mapState = MapUiState(
+                        clusters = fallbackRepository.getMapClusters(filter),
+                        isLoading = false,
+                        errorMessage = "Map data unavailable: ${error.message}",
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun refreshUpload() {
+        val config = runCatching { webRepository.getUploadConfig() }.getOrElse { fallbackRepository.getUploadConfig() }
+        uiState = uiState.copy(uploadState = uiState.uploadState.copy(isLoading = false, config = config, errorMessage = null))
+    }
+
+    private fun refreshMy() {
+        if (!sessionStore.read().isLoggedIn) {
+            uiState = uiState.copy(
+                myState = buildFallbackMyState().copy(
+                    authSession = AuthSession(),
+                    isLoading = false,
+                    errorMessage = null,
+                    authErrorMessage = null,
+                ),
+            )
+            return
+        }
+        uiState = uiState.copy(myState = uiState.myState.copy(isLoading = true, errorMessage = null))
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val summary = webRepository.getMySummary()
+                    MyUiState(
+                        authSession = webRepository.getAuthSession(),
+                        user = summary.first,
+                        summary = summary.second,
+                        works = openMyWorks(webRepository),
+                        likedPhotos = webRepository.getMyLikes(),
+                        pending = webRepository.getReviewItems("pending"),
+                        rejected = webRepository.getReviewItems("rejected"),
+                        sessions = webRepository.getDeviceSessions(),
+                    )
+                }
+            }.onSuccess { remoteState ->
+                uiState = uiState.copy(myState = remoteState.copy(isLoading = false))
+            }.onFailure { error ->
+                uiState = uiState.copy(
+                    myState = buildFallbackMyState().copy(
+                        isLoading = false,
+                        errorMessage = "My page data unavailable: ${error.message}",
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun buildFallbackState(): AppUiState {
+        val photos = fallbackRepository.getPhotos()
+        val categories = fallbackRepository.getCategoryCounts()
+        return AppUiState(
             photos = photos,
             categoryState = CategoryUiState(
                 airlines = categories.first,
                 models = categories.second,
             ),
-            uploadDraft = UploadDraftUiState(),
-            myState = MyUiState(
-                user = repository.getUserSummary(),
-                works = photos,
-                likedPhotos = repository.getMyLikes(),
-                pending = repository.getReviewItems("pending"),
-                rejected = repository.getReviewItems("rejected"),
-                sessions = repository.getDeviceSessions(),
-            ),
+            mapState = MapUiState(clusters = fallbackRepository.getMapClusters()),
+            uploadState = UploadUiState(config = fallbackRepository.getUploadConfig()),
+            myState = buildFallbackMyState(),
         )
+    }
+
+    private fun buildFallbackMyState(): MyUiState {
+        val summary = fallbackRepository.getMySummary()
+        return MyUiState(
+            authSession = sessionStore.read(),
+            user = summary.first,
+            summary = summary.second,
+            works = fallbackRepository.getPhotos(),
+            likedPhotos = fallbackRepository.getMyLikes(),
+            pending = fallbackRepository.getReviewItems("pending"),
+            rejected = fallbackRepository.getReviewItems("rejected"),
+            sessions = fallbackRepository.getDeviceSessions(),
+        )
+    }
+
+    private fun openMyWorks(repository: SyPhotosRepository): List<PhotoItem> {
+        return repository.getReviewItems("all").map { it.photo }
     }
 }
 
 data class AppUiState(
     val photoFilter: PhotoFilter = PhotoFilter(),
     val photos: List<PhotoItem> = emptyList(),
+    val feedState: FeedUiState = FeedUiState(),
     val categoryState: CategoryUiState = CategoryUiState(),
-    val uploadDraft: UploadDraftUiState = UploadDraftUiState(),
+    val mapState: MapUiState = MapUiState(),
+    val uploadState: UploadUiState = UploadUiState(),
     val myState: MyUiState = MyUiState(),
+    val viewerState: ViewerUiState = ViewerUiState(),
+    val suggestionState: SuggestionUiState = SuggestionUiState(),
+)
+
+data class FeedUiState(
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val usingFallbackData: Boolean = false,
 )
 
 data class CategoryUiState(
@@ -71,19 +432,55 @@ data class CategoryUiState(
     val models: List<CategoryCount> = emptyList(),
 )
 
-data class UploadDraftUiState(
+data class MapUiState(
+    val clusters: List<MapCluster> = emptyList(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+)
+
+data class UploadUiState(
+    val selectedImageUri: String = "",
     val fileName: String = "",
-    val progress: Float = 0.42f,
-    val exifEnabled: Boolean = true,
-    val watermarkEnabled: Boolean = true,
-    val registrationOcrEnabled: Boolean = true,
+    val title: String = "",
+    val registrationNumber: String = "",
+    val aircraftModel: String = "",
+    val airline: String = "",
+    val shootingTime: String = "",
+    val shootingLocation: String = "",
+    val cameraModel: String = "",
+    val lensModel: String = "",
+    val watermarkSize: Int = 15,
+    val watermarkOpacity: Int = 80,
+    val watermarkPosition: String = "bottom-right",
+    val watermarkColor: String = "white",
+    val watermarkAuthorStyle: String = "default",
+    val allowUse: Boolean = true,
+    val config: UploadConfig = UploadConfig(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val successMessage: String? = null,
 )
 
 data class MyUiState(
+    val authSession: AuthSession = AuthSession(),
     val user: UserSummary = UserSummary("", "", false),
+    val summary: MySummaryStats = MySummaryStats(),
     val works: List<PhotoItem> = emptyList(),
     val likedPhotos: List<PhotoItem> = emptyList(),
     val pending: List<ReviewItem> = emptyList(),
     val rejected: List<ReviewItem> = emptyList(),
     val sessions: List<DeviceSession> = emptyList(),
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val authErrorMessage: String? = null,
+)
+
+data class ViewerUiState(
+    val detail: PhotoDetail? = null,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+)
+
+data class SuggestionUiState(
+    val itemsByField: Map<String, List<SearchSuggestion>> = emptyMap(),
 )

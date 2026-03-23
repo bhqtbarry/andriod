@@ -10,10 +10,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Button
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import cn.syphotos.android.ui.components.GradientHero
@@ -27,8 +35,12 @@ fun MyScreen(
     state: MyUiState,
     selectedLanguage: AppLanguage,
     onLanguageSelected: (AppLanguage) -> Unit,
+    onLogin: (String, String) -> Unit,
+    onLogout: () -> Unit,
 ) {
     val strings = LocalAppStrings.current
+    var loginInput by remember { mutableStateOf("") }
+    var passwordInput by remember { mutableStateOf("") }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -43,68 +55,121 @@ fun MyScreen(
         }
         item {
             SectionCard(strings.account) {
-                Text("${strings.userLabel}: ${state.user.username}")
-                Text("${strings.emailLabel}: ${state.user.email}")
-                Text(if (state.user.emailVerified) strings.emailVerified else strings.emailVerificationRequired)
-                Text(strings.passwordChange)
-            }
-        }
-        item {
-            SectionCard(strings.myWorks) {
-                Text(strings.worksCount(state.works.size))
-            }
-        }
-        item {
-            SectionCard(strings.myLikes) {
-                Text(strings.likesCount(state.likedPhotos.size))
-            }
-        }
-        item {
-            SectionCard(strings.pending) {
-                Text(strings.editableCount(state.pending.size))
-            }
-        }
-        item {
-            SectionCard(strings.rejected) {
-                state.rejected.forEach {
-                    Text(strings.reason(it.rejectionReason ?: "-"))
-                    Text(strings.admin(it.adminComment ?: "-"))
-                }
-            }
-        }
-        item {
-            SectionCard(strings.languageTitle) {
-                Text(strings.languageSubtitle)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    AppLanguage.entries.forEach { language ->
-                        FilterChip(
-                            selected = language == selectedLanguage,
-                            onClick = { onLanguageSelected(language) },
-                            label = { Text(language.nativeName) },
-                        )
+                if (!state.authSession.isLoggedIn) {
+                    OutlinedTextField(
+                        value = loginInput,
+                        onValueChange = { loginInput = it },
+                        label = { Text(strings.loginLabel) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = passwordInput,
+                        onValueChange = { passwordInput = it },
+                        label = { Text(strings.passwordField) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Button(
+                        onClick = { onLogin(loginInput, passwordInput) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(strings.signIn)
+                    }
+                    state.authErrorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                } else {
+                    Text("${strings.userLabel}: ${state.user.username}")
+                    Text("${strings.emailLabel}: ${state.user.email}")
+                    Text(if (state.user.emailVerified) strings.emailVerified else strings.emailVerificationRequired)
+                    Text(strings.passwordChange)
+                    Button(
+                        onClick = onLogout,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(strings.signOut)
                     }
                 }
             }
         }
-        item {
-            SectionCard(strings.devices) {
-                Text("${strings.currentDevice} + ${strings.revocable}")
+        state.errorMessage?.let { message ->
+            item {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = MaterialTheme.shapes.large,
+                ) {
+                    Text(
+                        text = message,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                    )
+                }
             }
         }
-        items(state.sessions, key = { it.id }) { session ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(session.deviceName, style = MaterialTheme.typography.titleMedium)
-                    Text("${session.systemVersion} • ${session.ipAddress}")
-                    Text("${strings.loginLabel}: ${session.loginTime}")
-                    Text(if (session.isCurrent) strings.currentDevice else strings.revocable)
+        if (state.isLoading) {
+            item {
+                CircularProgressIndicator(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+        }
+        if (state.authSession.isLoggedIn) {
+            item {
+                SectionCard(strings.myWorks) {
+                    Text(strings.worksCount(state.summary.allPhotos))
+                }
+            }
+            item {
+                SectionCard(strings.myLikes) {
+                    Text(strings.likesCount(state.summary.likedPhotos))
+                }
+            }
+            item {
+                SectionCard(strings.pending) {
+                    Text(strings.editableCount(state.summary.pendingPhotos))
+                }
+            }
+            item {
+                SectionCard(strings.rejected) {
+                    Text(strings.editableCount(state.summary.rejectedPhotos))
+                    state.rejected.forEach {
+                        Text(strings.reason(it.rejectionReason ?: "-"))
+                        Text(strings.admin(it.adminComment ?: "-"))
+                    }
+                }
+            }
+            item {
+                SectionCard(strings.languageTitle) {
+                    Text(strings.languageSubtitle)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        AppLanguage.entries.forEach { language ->
+                            FilterChip(
+                                selected = language == selectedLanguage,
+                                onClick = { onLanguageSelected(language) },
+                                label = { Text(language.nativeName) },
+                            )
+                        }
+                    }
+                }
+            }
+            item {
+                SectionCard(strings.devices) {
+                    Text("${strings.currentDevice} + ${strings.revocable}")
+                }
+            }
+            items(state.sessions, key = { it.id }) { session ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(session.deviceName, style = MaterialTheme.typography.titleMedium)
+                        Text("${session.systemVersion} • ${session.ipAddress}")
+                        Text("${strings.loginLabel}: ${session.loginTime}")
+                        Text(if (session.isCurrent) strings.currentDevice else strings.revocable)
+                    }
                 }
             }
         }
