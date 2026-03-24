@@ -75,6 +75,12 @@ fun AllPhotosScreen(
         if (shouldLoadMore) onLoadMore()
     }
 
+    LaunchedEffect(showFilters) {
+        if (showFilters) {
+            gridState.animateScrollToItem(0)
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         LazyVerticalGrid(
             state = gridState,
@@ -172,9 +178,7 @@ private fun SearchDrawer(
     }
     LaunchedEffect(draft) {
         delay(500)
-        if (draft != filter) {
-            onFilterChange(draft)
-        }
+        if (draft != filter) onFilterChange(draft)
     }
 
     Surface(

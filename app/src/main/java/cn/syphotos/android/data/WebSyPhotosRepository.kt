@@ -307,7 +307,6 @@ class WebSyPhotosRepository(
             if (cookieHeader.isNotBlank()) {
                 setRequestProperty("Cookie", cookieHeader)
             }
-            setChunkedStreamingMode(0)
         }
 
         connection.outputStream.use { output ->
@@ -689,7 +688,6 @@ class WebSyPhotosRepository(
                 }
                 setRequestProperty("Authorization", "Bearer $token")
             }
-            setChunkedStreamingMode(0)
         }
 
         connection.outputStream.use { output ->

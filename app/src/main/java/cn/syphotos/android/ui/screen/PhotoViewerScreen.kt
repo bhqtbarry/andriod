@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -36,6 +37,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.ui.i18n.LocalAppStrings
@@ -61,10 +63,10 @@ fun PhotoViewerScreen(
         gallery.indexOfFirst { it.id == currentPhotoId }.takeIf { it >= 0 } ?: 0
     }
     val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { gallery.size.coerceAtLeast(1) })
-
     var scale by rememberSaveable { mutableFloatStateOf(1f) }
     var offsetX by rememberSaveable { mutableFloatStateOf(0f) }
     var offsetY by rememberSaveable { mutableFloatStateOf(0f) }
+    var showChrome by rememberSaveable { mutableStateOf(true) }
     var showDetails by rememberSaveable { mutableStateOf(false) }
 
     val pagePhoto = gallery.getOrNull(pagerState.currentPage)
@@ -86,27 +88,22 @@ fun PhotoViewerScreen(
             gallery.getOrNull(pagerState.currentPage + 1),
         ).forEach { item ->
             val cached = state.photosById[item.id]
-            val url = cached?.originalUrl?.ifBlank { item.originalUrl }.orEmpty()
-            if (url.isBlank()) return@forEach
-            imageLoader.enqueue(
-                ImageRequest.Builder(context)
-                    .data(url)
-                    .build(),
-            )
+            listOf(
+                cached?.thumbUrl.orEmpty(),
+                item.thumbUrl,
+                cached?.originalUrl.orEmpty(),
+                item.originalUrl,
+            ).filter { it.isNotBlank() }.forEach { url ->
+                imageLoader.enqueue(ImageRequest.Builder(context).data(url).build())
+            }
         }
     }
 
     Surface(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.scrim),
-        color = MaterialTheme.colorScheme.scrim,
+        modifier = Modifier.fillMaxSize(),
+        color = Color.Black,
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.scrim),
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
@@ -120,18 +117,18 @@ fun PhotoViewerScreen(
                     cached?.thumbUrl.orEmpty(),
                     item?.thumbUrl.orEmpty(),
                 ).firstOrNull { it.isNotBlank() }.orEmpty()
-                val pageImageUrl = listOf(
+                val originalUrl = listOf(
                     matchedDetail?.originalUrl.orEmpty(),
                     cached?.originalUrl.orEmpty(),
                     item?.originalUrl.orEmpty(),
-                    thumbUrl,
                 ).firstOrNull { it.isNotBlank() }.orEmpty()
 
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(pageImageUrl, scale) {
+                        .pointerInput(page, originalUrl, thumbUrl, scale) {
                             detectTapGestures(
+                                onTap = { showChrome = !showChrome },
                                 onDoubleTap = {
                                     if (scale > 1f) {
                                         scale = 1f
@@ -143,7 +140,7 @@ fun PhotoViewerScreen(
                                 },
                             )
                         }
-                        .pointerInput(pageImageUrl, scale) {
+                        .pointerInput(page, originalUrl, scale) {
                             detectTransformGestures { _, pan, zoom, _ ->
                                 val nextScale = (scale * zoom).coerceIn(1f, 4f)
                                 if (nextScale == 1f) {
@@ -161,9 +158,7 @@ fun PhotoViewerScreen(
                 ) {
                     if (thumbUrl.isNotBlank()) {
                         AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(thumbUrl)
-                                .build(),
+                            model = ImageRequest.Builder(context).data(thumbUrl).build(),
                             contentDescription = item?.title ?: fallbackPhotoTitle,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -176,11 +171,9 @@ fun PhotoViewerScreen(
                             contentScale = ContentScale.Fit,
                         )
                     }
-                    if (pageImageUrl.isNotBlank()) {
+                    if (originalUrl.isNotBlank()) {
                         AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(pageImageUrl)
-                                .build(),
+                            model = ImageRequest.Builder(context).data(originalUrl).build(),
                             contentDescription = item?.title ?: fallbackPhotoTitle,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -192,7 +185,8 @@ fun PhotoViewerScreen(
                                 },
                             contentScale = ContentScale.Fit,
                         )
-                    } else {
+                    }
+                    if (thumbUrl.isBlank() && originalUrl.isBlank()) {
                         Text(
                             text = "Image unavailable",
                             color = Color.White,
@@ -202,20 +196,82 @@ fun PhotoViewerScreen(
                 }
             }
 
-            Button(
-                onClick = { showDetails = true },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(16.dp),
-            ) {
-                Text("详细信息")
+            if (showChrome && gallery.isNotEmpty()) {
+                Surface(
+                    color = Color(0x66000000),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 18.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                text = photo?.title ?: fallbackPhotoTitle,
+                                color = Color.White,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = "${pagerState.currentPage + 1} / ${gallery.size}",
+                                color = Color(0xCCFFFFFF),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        Button(onClick = { showDetails = true }) {
+                            Text("信息")
+                        }
+                    }
+                }
+
+                Surface(
+                    color = Color(0x66000000),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .navigationBarsPadding(),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = listOfNotNull(
+                                photo?.airline?.takeIf { it.isNotBlank() },
+                                photo?.aircraftModel?.takeIf { it.isNotBlank() },
+                                photo?.registration?.takeIf { it.isNotBlank() },
+                            ).joinToString("  "),
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = photo?.location.orEmpty(),
+                            color = Color(0xCCFFFFFF),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
+
             if (state.isLoading && state.detail == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
         }
     }
+
     if (showDetails && photo != null) {
         ModalBottomSheet(onDismissRequest = { showDetails = false }) {
             Column(
@@ -237,7 +293,6 @@ fun PhotoViewerScreen(
                 DetailLinkRow("ISO", state.detail?.takeIf { it.photo.id == photo.id }?.iso.orEmpty(), onClick = null)
                 DetailLinkRow("光圈", state.detail?.takeIf { it.photo.id == photo.id }?.aperture?.let { "f/$it" }.orEmpty(), onClick = null)
                 DetailLinkRow("快门", state.detail?.takeIf { it.photo.id == photo.id }?.shutter.orEmpty(), onClick = null)
-                DetailLinkRow("评分", state.detail?.takeIf { it.photo.id == photo.id }?.score.orEmpty(), onClick = null)
                 Button(onClick = { onToggleLike(photo.id) }, modifier = Modifier.fillMaxWidth()) {
                     Text(if (photo.liked) strings.unlike else strings.like)
                 }

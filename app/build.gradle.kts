@@ -74,6 +74,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("com.google.android.material:material:1.12.0")
+    implementation("com.baidu.lbsyun:BaiduMapSDK_Map:7.5.4")
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
 

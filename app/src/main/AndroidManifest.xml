@@ -3,15 +3,22 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <application
+        android:name=".SyPhotosApplication"
         android:allowBackup="true"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.SYPhotos"
         android:usesCleartextTraffic="true">
+        <meta-data
+            android:name="com.baidu.lbsapi.API_KEY"
+            android:value="Md0QorhlUfBvX9HYdSh4I1mZlNCKQxHg" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
