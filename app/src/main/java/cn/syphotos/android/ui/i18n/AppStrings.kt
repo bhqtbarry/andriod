@@ -29,19 +29,8 @@ class AppStrings(
     val lens get() = text("lens")
     val registration get() = text("registration")
     val location get() = text("location")
-    val sortInfo get() = text("sort_info")
-    val trendingNow get() = text("trending_now")
-    val latestUploads get() = text("latest_uploads")
-    val openViewer get() = text("open_viewer")
-    val tapToLike get() = text("tap_to_like")
-    val tapToUnlike get() = text("tap_to_unlike")
     val mapTitle get() = text("map_title")
     val mapSubtitle get() = text("map_subtitle")
-    val mapClusters get() = text("map_clusters")
-    val mapStrategy get() = text("map_strategy")
-    val mapStepPermission get() = text("map_step_permission")
-    val mapStepLanguage get() = text("map_step_language")
-    val simulateMarker get() = text("simulate_marker")
     val uploadTitle get() = text("upload_title")
     val uploadSubtitle get() = text("upload_subtitle")
     val uploadFieldTitle get() = text("upload_field_title")
@@ -76,27 +65,11 @@ class AppStrings(
     val uploadPositionBottomRight get() = text("upload_position_bottom_right")
     val uploadTermsTitle get() = text("upload_terms_title")
     val uploadTermsDesc get() = text("upload_terms_desc")
-    val noImageSelected get() = text("no_image_selected")
-    val ratioRule get() = text("ratio_rule")
+    val chooseImage get() = text("choose_image")
     val exifEnabled get() = text("exif_enabled")
     val watermarkEnabled get() = text("watermark_enabled")
-    val registrationOcr get() = text("registration_ocr")
-    val retryInfo get() = text("retry_info")
-    val chooseImage get() = text("choose_image")
-    val retryUpload get() = text("retry_upload")
-    val deletionRules get() = text("deletion_rules")
-    val irreversibleRule get() = text("irreversible_rule")
-    val pendingRule get() = text("pending_rule")
-    val rejectedRule get() = text("rejected_rule")
-    val approvedRule get() = text("approved_rule")
     val categoryTitle get() = text("category_title")
     val categorySubtitle get() = text("category_subtitle")
-    val airlineTab get() = text("airline_tab")
-    val aircraftTab get() = text("aircraft_tab")
-    val categoryListHint get() = text("category_list_hint")
-    val topAirlineLabel get() = text("top_airline_label")
-    val archiveShareLabel get() = text("archive_share_label")
-    val coverageLabel get() = text("coverage_label")
     val myTitle get() = text("my_title")
     val mySubtitle get() = text("my_subtitle")
     val languageTitle get() = text("language_title")
@@ -118,14 +91,9 @@ class AppStrings(
     val passwordChange get() = text("password_change")
     val currentDevice get() = text("current_device")
     val revocable get() = text("revocable")
-    val viewerTitle get() = text("viewer_title")
-    val viewerHint get() = text("viewer_hint")
-    val preloadHint get() = text("preload_hint")
-    val shareHint get() = text("share_hint")
     val back get() = text("back")
     val like get() = text("like")
     val unlike get() = text("unlike")
-    val authorAction get() = text("author_action")
     val share get() = text("share")
     val language get() = text("language")
 
@@ -160,7 +128,6 @@ class AppStrings(
     fun worksCount(count: Int): String = format("works_count", "count" to count)
     fun likesCount(count: Int): String = format("likes_count", "count" to count)
     fun editableCount(count: Int): String = format("editable_count", "count" to count)
-    fun zoomState(label: String): String = format("zoom_state", "value" to label)
     fun reason(value: String): String = format("reason_value", "value" to value)
     fun admin(value: String): String = format("admin_value", "value" to value)
 
@@ -192,19 +159,8 @@ class AppStrings(
             "lens" to "Lens",
             "registration" to "Registration",
             "location" to "Location / IATA",
-            "sort_info" to "Sorted by relevance first, then newest captures.",
-            "trending_now" to "Trending now",
-            "latest_uploads" to "Latest uploads",
-            "open_viewer" to "Open viewer",
-            "tap_to_like" to "Tap to like",
-            "tap_to_unlike" to "Tap to unlike",
             "map_title" to "Photo Map",
             "map_subtitle" to "Use geography as the starting point, then jump back into the full archive with shared filters.",
-            "map_clusters" to "Clustered airport hotspots, route density, and quick drill-down states belong here.",
-            "map_strategy" to "Initial location strategy",
-            "map_step_permission" to "1. Request precise location permission",
-            "map_step_language" to "2. If denied, infer country from the selected app language",
-            "simulate_marker" to "Simulate CGK marker",
             "upload_title" to "Upload",
             "upload_subtitle" to "Use the same web upload flow and fields, without the extra filler text.",
             "upload_field_title" to "Title",
@@ -239,27 +195,11 @@ class AppStrings(
             "upload_position_bottom_right" to "Bottom right",
             "upload_terms_title" to "Terms",
             "upload_terms_desc" to "I confirm I own the image and allow the platform to use it according to the site rules.",
-            "no_image_selected" to "No image selected yet",
-            "ratio_rule" to "Accepted ratio: 1:2 to 2:1",
+            "choose_image" to "Choose Image",
             "exif_enabled" to "EXIF auto extraction is enabled",
             "watermark_enabled" to "Website watermark rules will be reused",
-            "registration_ocr" to "Aircraft registration OCR is ready for integration",
-            "retry_info" to "Uploads can resume and enter the review queue after success.",
-            "choose_image" to "Choose Image",
-            "retry_upload" to "Retry Upload",
-            "deletion_rules" to "Deletion rules",
-            "irreversible_rule" to "Deletion is irreversible and requires a second confirmation.",
-            "pending_rule" to "Pending photos can still be edited or deleted.",
-            "rejected_rule" to "Rejected photos can be deleted and then reuploaded.",
-            "approved_rule" to "Approved photos can only be deleted.",
             "category_title" to "Airlines",
             "category_subtitle" to "Scan the archive by airline, with a denser ranking layout inspired by the web airline directory.",
-            "airline_tab" to "Airlines",
-            "aircraft_tab" to "Aircraft",
-            "category_list_hint" to "Operator ranking by published photo volume",
-            "top_airline_label" to "Top airline",
-            "archive_share_label" to "of archive",
-            "coverage_label" to "Archive coverage",
             "my_title" to "My Space",
             "my_subtitle" to "Account controls, review queue, likes, and devices in one place.",
             "language_title" to "Language",
@@ -281,21 +221,15 @@ class AppStrings(
             "password_change" to "Password changes remain available in the auth flow.",
             "current_device" to "Current device",
             "revocable" to "Revocable",
-            "viewer_title" to "Immersive Viewer",
-            "viewer_hint" to "Tap once to hide chrome, double tap to change zoom.",
-            "preload_hint" to "Plan: preload the next 5 originals, keep a 200 MB original cache and 100 MB thumbnail cache.",
-            "share_hint" to "Share output should point to the HTTPS web detail page.",
             "back" to "Back",
             "like" to "Like",
             "unlike" to "Unlike",
-            "author_action" to "Author",
             "share" to "Share",
             "language" to "Language",
             "photos_count" to "{count} photos",
             "works_count" to "Current loaded works: {count}",
             "likes_count" to "Liked photos: {count}",
             "editable_count" to "Editable items: {count}",
-            "zoom_state" to "Zoom: {value}",
             "reason_value" to "Reason: {value}",
             "admin_value" to "Admin: {value}",
         )
@@ -318,19 +252,8 @@ class AppStrings(
                 "lens" to "镜头",
                 "registration" to "注册号",
                 "location" to "地点 / IATA",
-                "sort_info" to "优先按相关度排序，其次按最新拍摄时间。",
-                "trending_now" to "当前热门",
-                "latest_uploads" to "最新上传",
-                "open_viewer" to "打开查看器",
-                "tap_to_like" to "点按喜欢",
-                "tap_to_unlike" to "点按取消喜欢",
                 "map_title" to "照片地图",
                 "map_subtitle" to "先按地理位置浏览，再带着筛选条件回到完整图库。",
-                "map_clusters" to "这里适合放机场热点聚类、航线密度和快速下钻状态。",
-                "map_strategy" to "初始定位策略",
-                "map_step_permission" to "1. 请求精确位置权限",
-                "map_step_language" to "2. 若被拒绝，则根据当前应用语言推断国家",
-                "simulate_marker" to "模拟点击 CGK 标记",
                 "upload_title" to "上传",
                 "upload_subtitle" to "直接复用网页 upload.php 的字段和流程，去掉多余说明文字。",
                 "upload_field_title" to "标题",
@@ -365,27 +288,11 @@ class AppStrings(
                 "upload_position_bottom_right" to "右下",
                 "upload_terms_title" to "使用条款",
                 "upload_terms_desc" to "我确认拥有图片权利，并同意按网站规则授权平台使用。",
-                "no_image_selected" to "暂未选择图片",
-                "ratio_rule" to "接受比例：1:2 到 2:1",
+                "choose_image" to "选择图片",
                 "exif_enabled" to "已启用 EXIF 自动提取",
                 "watermark_enabled" to "将沿用网站水印规则",
-                "registration_ocr" to "飞机注册号 OCR 已预留集成位",
-                "retry_info" to "上传支持续传，成功后会进入审核队列。",
-                "choose_image" to "选择图片",
-                "retry_upload" to "重试上传",
-                "deletion_rules" to "删除规则",
-                "irreversible_rule" to "删除不可撤销，且需要二次确认。",
-                "pending_rule" to "待审核照片仍可编辑或删除。",
-                "rejected_rule" to "被拒照片可删除后重新上传。",
-                "approved_rule" to "已通过照片只能删除。",
                 "category_title" to "航司",
                 "category_subtitle" to "参考网站 airline 页重做为高密度航司列表，用照片量快速浏览图库。",
-                "airline_tab" to "航司",
-                "aircraft_tab" to "机型",
-                "category_list_hint" to "按已发布照片量排序的航司目录",
-                "top_airline_label" to "头部航司",
-                "archive_share_label" to "图库占比",
-                "coverage_label" to "收录覆盖度",
                 "my_title" to "我的空间",
                 "my_subtitle" to "账号、审核队列、收藏和设备统一收纳。",
                 "language_title" to "语言",
@@ -407,37 +314,31 @@ class AppStrings(
                 "password_change" to "密码修改仍在认证流程中支持。",
                 "current_device" to "当前设备",
                 "revocable" to "可撤销",
-                "viewer_title" to "沉浸查看器",
-                "viewer_hint" to "单击隐藏界面，双击切换缩放。",
-                "preload_hint" to "规划：预加载后续 5 张原图，保留 200 MB 原图缓存和 100 MB 缩略图缓存。",
-                "share_hint" to "分享输出应指向 HTTPS 网页详情页。",
                 "back" to "返回",
                 "like" to "喜欢",
                 "unlike" to "取消喜欢",
-                "author_action" to "作者",
                 "share" to "分享",
                 "language" to "语言",
                 "photos_count" to "{count} 张照片",
                 "works_count" to "当前已加载作品：{count}",
                 "likes_count" to "喜欢的照片：{count}",
                 "editable_count" to "可编辑项目：{count}",
-                "zoom_state" to "缩放：{value}",
                 "reason_value" to "原因：{value}",
                 "admin_value" to "管理员：{value}",
             ),
             AppLanguage.EN to english,
-            AppLanguage.FR to english + mapOf("language" to "Langue", "nav_my" to "Profil", "choose_image" to "Choisir une image", "retry_upload" to "Relancer l'envoi", "back" to "Retour"),
-            AppLanguage.DE to english + mapOf("language" to "Sprache", "nav_my" to "Profil", "choose_image" to "Bild waehlen", "retry_upload" to "Upload erneut starten", "back" to "Zurueck"),
-            AppLanguage.IT to english + mapOf("language" to "Lingua", "nav_my" to "Profilo", "choose_image" to "Scegli immagine", "retry_upload" to "Riprova upload", "back" to "Indietro"),
-            AppLanguage.ID to english + mapOf("language" to "Bahasa", "nav_my" to "Saya", "choose_image" to "Pilih Gambar", "retry_upload" to "Ulangi Unggah", "back" to "Kembali"),
-            AppLanguage.ES to english + mapOf("language" to "Idioma", "nav_my" to "Perfil", "choose_image" to "Elegir imagen", "retry_upload" to "Reintentar carga", "back" to "Atras"),
-            AppLanguage.PT to english + mapOf("language" to "Idioma", "nav_my" to "Perfil", "choose_image" to "Escolher imagem", "retry_upload" to "Tentar novamente", "back" to "Voltar"),
-            AppLanguage.TH to english + mapOf("language" to "ภาษา", "nav_my" to "โปรไฟล์", "choose_image" to "เลือกรูปภาพ", "retry_upload" to "อัปโหลดอีกครั้ง", "back" to "กลับ"),
-            AppLanguage.KO to english + mapOf("language" to "언어", "nav_my" to "내 정보", "choose_image" to "이미지 선택", "retry_upload" to "업로드 재시도", "back" to "뒤로"),
-            AppLanguage.JA to english + mapOf("language" to "言語", "nav_my" to "マイページ", "choose_image" to "画像を選択", "retry_upload" to "再アップロード", "back" to "戻る"),
-            AppLanguage.RU to english + mapOf("language" to "Язык", "nav_my" to "Профиль", "choose_image" to "Выбрать изображение", "retry_upload" to "Повторить загрузку", "back" to "Назад"),
-            AppLanguage.VI to english + mapOf("language" to "Ngon ngu", "nav_my" to "Ho so", "choose_image" to "Chon anh", "retry_upload" to "Tai lai", "back" to "Quay lai"),
-            AppLanguage.HI to english + mapOf("language" to "भाषा", "nav_my" to "प्रोफ़ाइल", "choose_image" to "छवि चुनें", "retry_upload" to "फिर से अपलोड करें", "back" to "वापस"),
+            AppLanguage.FR to english + mapOf("language" to "Langue", "nav_my" to "Profil", "choose_image" to "Choisir une image", "back" to "Retour"),
+            AppLanguage.DE to english + mapOf("language" to "Sprache", "nav_my" to "Profil", "choose_image" to "Bild waehlen", "back" to "Zurueck"),
+            AppLanguage.IT to english + mapOf("language" to "Lingua", "nav_my" to "Profilo", "choose_image" to "Scegli immagine", "back" to "Indietro"),
+            AppLanguage.ID to english + mapOf("language" to "Bahasa", "nav_my" to "Saya", "choose_image" to "Pilih Gambar", "back" to "Kembali"),
+            AppLanguage.ES to english + mapOf("language" to "Idioma", "nav_my" to "Perfil", "choose_image" to "Elegir imagen", "back" to "Atras"),
+            AppLanguage.PT to english + mapOf("language" to "Idioma", "nav_my" to "Perfil", "choose_image" to "Escolher imagem", "back" to "Voltar"),
+            AppLanguage.TH to english + mapOf("language" to "ภาษา", "nav_my" to "โปรไฟล์", "choose_image" to "เลือกรูปภาพ", "back" to "กลับ"),
+            AppLanguage.KO to english + mapOf("language" to "언어", "nav_my" to "내 정보", "choose_image" to "이미지 선택", "back" to "뒤로"),
+            AppLanguage.JA to english + mapOf("language" to "言語", "nav_my" to "マイページ", "choose_image" to "画像を選択", "back" to "戻る"),
+            AppLanguage.RU to english + mapOf("language" to "Язык", "nav_my" to "Профиль", "choose_image" to "Выбрать изображение", "back" to "Назад"),
+            AppLanguage.VI to english + mapOf("language" to "Ngon ngu", "nav_my" to "Ho so", "choose_image" to "Chon anh", "back" to "Quay lai"),
+            AppLanguage.HI to english + mapOf("language" to "भाषा", "nav_my" to "प्रोफ़ाइल", "choose_image" to "छवि चुनें", "back" to "वापस"),
         )
 
         fun forLanguage(language: AppLanguage): AppStrings = AppStrings(language, translations[language] ?: english)
