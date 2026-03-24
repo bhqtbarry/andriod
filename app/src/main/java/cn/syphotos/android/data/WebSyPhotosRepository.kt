@@ -273,13 +273,15 @@ class WebSyPhotosRepository(
             if (payloadObject?.has("error") == true) {
                 throw IllegalStateException(payloadObject.optString("error"))
             }
-            val data = if (payloadObject?.optJSONArray("data") != null) {
-                payloadObject.optJSONArray("data")?.optJSONObject(0)
-            } else if (payloadObject?.optJSONArray("items") != null) {
-                payloadObject.optJSONArray("items")?.optJSONObject(0)
-            } else {
-                payloadArray?.optJSONObject(0)
-            } ?: payloadObject ?: throw IllegalStateException("EXIF 服务返回格式无效")
+            val data: JSONObject = when {
+                payloadObject?.optJSONArray("data") != null ->
+                    payloadObject.optJSONArray("data")?.optJSONObject(0)
+                payloadObject?.optJSONArray("items") != null ->
+                    payloadObject.optJSONArray("items")?.optJSONObject(0)
+                payloadArray != null ->
+                    payloadArray.optJSONObject(0)
+                else -> payloadObject
+            } ?: throw IllegalStateException("EXIF 服务返回格式无效")
 
             if (data.optString("error").isNotBlank()) {
                 throw IllegalStateException(data.optString("error"))
