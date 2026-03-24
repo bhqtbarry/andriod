@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -19,9 +21,11 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -42,16 +46,32 @@ import coil3.compose.AsyncImage
 fun PhotoViewerScreen(
     state: ViewerUiState,
     fallbackPhotoTitle: String,
-    onToggleLike: () -> Unit,
+    onToggleLike: (Long) -> Unit,
+    onPhotoChanged: (Long) -> Unit,
     onApplyFilter: (PhotoFilter) -> Unit,
 ) {
     val strings = LocalAppStrings.current
+    val gallery = state.gallery.ifEmpty { state.detail?.photo?.let(::listOf).orEmpty() }
+    val currentPhotoId = state.currentPhotoId ?: state.detail?.photo?.id
+    val initialPage = remember(gallery, currentPhotoId) {
+        gallery.indexOfFirst { it.id == currentPhotoId }.takeIf { it >= 0 } ?: 0
+    }
+    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { gallery.size.coerceAtLeast(1) })
     var scale by rememberSaveable { mutableFloatStateOf(1f) }
     var offsetX by rememberSaveable { mutableFloatStateOf(0f) }
     var offsetY by rememberSaveable { mutableFloatStateOf(0f) }
     var showDetails by rememberSaveable { mutableStateOf(false) }
-    val photo = state.detail?.photo
-    val imageUrl = state.detail?.originalUrl?.ifBlank { photo?.originalUrl }.orEmpty()
+    val pagePhoto = gallery.getOrNull(pagerState.currentPage)
+    val photo = state.detail?.photo?.takeIf { it.id == pagePhoto?.id } ?: pagePhoto ?: state.detail?.photo
+    val imageUrl = state.detail?.takeIf { it.photo.id == photo?.id }?.originalUrl?.ifBlank { photo?.originalUrl }.orEmpty()
+
+    LaunchedEffect(pagerState.currentPage, gallery) {
+        gallery.getOrNull(pagerState.currentPage)?.id?.let { onPhotoChanged(it) }
+        scale = 1f
+        offsetX = 0f
+        offsetY = 0f
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxSize()
@@ -63,60 +83,72 @@ fun PhotoViewerScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.scrim),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(imageUrl) {
-                        detectTransformGestures { _, pan, zoom, _ ->
-                            val newScale = (scale * zoom).coerceIn(1f, 4f)
-                            if (newScale == 1f) {
-                                scale = 1f
-                                offsetX = 0f
-                                offsetY = 0f
-                            } else {
-                                scale = newScale
-                                offsetX += pan.x
-                                offsetY += pan.y
-                            }
-                        }
-                    }
-                    .pointerInput(imageUrl) {
-                        detectTapGestures(
-                            onDoubleTap = {
-                                if (scale > 1f) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+            ) { page ->
+                val item = gallery.getOrNull(page)
+                val pageImageUrl = if (state.detail?.photo?.id == item?.id) {
+                    state.detail.originalUrl.ifBlank { item?.originalUrl }.orEmpty()
+                } else {
+                    item?.originalUrl.orEmpty()
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(pageImageUrl) {
+                            detectTransformGestures { _, pan, zoom, _ ->
+                                val newScale = (scale * zoom).coerceIn(1f, 4f)
+                                if (newScale == 1f) {
                                     scale = 1f
                                     offsetX = 0f
                                     offsetY = 0f
                                 } else {
-                                    scale = 2f
+                                    scale = newScale
+                                    offsetX += pan.x
+                                    offsetY += pan.y
                                 }
-                            },
+                            }
+                        }
+                        .pointerInput(pageImageUrl) {
+                            detectTapGestures(
+                                onDoubleTap = {
+                                    if (scale > 1f) {
+                                        scale = 1f
+                                        offsetX = 0f
+                                        offsetY = 0f
+                                    } else {
+                                        scale = 2f
+                                    }
+                                },
+                            )
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (pageImageUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = pageImageUrl,
+                            contentDescription = item?.title ?: fallbackPhotoTitle,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    translationX = offsetX
+                                    translationY = offsetY
+                                },
+                            contentScale = ContentScale.Fit,
                         )
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (imageUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = photo?.title ?: fallbackPhotoTitle,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                                translationX = offsetX
-                                translationY = offsetY
-                            },
-                        contentScale = ContentScale.Fit,
-                    )
-                } else {
-                    Text(
-                        text = "Image unavailable",
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
+                    } else {
+                        Text(
+                            text = "Image unavailable",
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    }
                 }
             }
+
             Button(
                 onClick = { showDetails = true },
                 modifier = Modifier
@@ -147,13 +179,13 @@ fun PhotoViewerScreen(
                 DetailLinkRow("拍摄地点", photo.location, onClick = { onApplyFilter(PhotoFilter(locationCode = photo.location)) })
                 DetailLinkRow("相机", photo.camera, onClick = { onApplyFilter(PhotoFilter(camera = photo.camera)) })
                 DetailLinkRow("镜头", photo.lens, onClick = { onApplyFilter(PhotoFilter(lens = photo.lens)) })
-                DetailLinkRow("拍摄时间", state.detail?.shootingTime.orEmpty(), onClick = null)
-                DetailLinkRow("焦距", state.detail?.focalLength?.let { "$it mm" }.orEmpty(), onClick = null)
-                DetailLinkRow("ISO", state.detail?.iso.orEmpty(), onClick = null)
-                DetailLinkRow("光圈", state.detail?.aperture?.let { "f/$it" }.orEmpty(), onClick = null)
-                DetailLinkRow("快门", state.detail?.shutter.orEmpty(), onClick = null)
-                DetailLinkRow("评分", state.detail?.score.orEmpty(), onClick = null)
-                Button(onClick = onToggleLike, modifier = Modifier.fillMaxWidth()) {
+                DetailLinkRow("拍摄时间", state.detail?.takeIf { it.photo.id == photo.id }?.shootingTime.orEmpty(), onClick = null)
+                DetailLinkRow("焦距", state.detail?.takeIf { it.photo.id == photo.id }?.focalLength?.let { "$it mm" }.orEmpty(), onClick = null)
+                DetailLinkRow("ISO", state.detail?.takeIf { it.photo.id == photo.id }?.iso.orEmpty(), onClick = null)
+                DetailLinkRow("光圈", state.detail?.takeIf { it.photo.id == photo.id }?.aperture?.let { "f/$it" }.orEmpty(), onClick = null)
+                DetailLinkRow("快门", state.detail?.takeIf { it.photo.id == photo.id }?.shutter.orEmpty(), onClick = null)
+                DetailLinkRow("评分", state.detail?.takeIf { it.photo.id == photo.id }?.score.orEmpty(), onClick = null)
+                Button(onClick = { onToggleLike(photo.id) }, modifier = Modifier.fillMaxWidth()) {
                     Text(if (photo.liked) strings.unlike else strings.like)
                 }
                 Button(onClick = { showDetails = false }, modifier = Modifier.fillMaxWidth()) {

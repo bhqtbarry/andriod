@@ -28,6 +28,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -310,6 +311,28 @@ private fun SearchDrawer(
                     onClearSuggestions("lens")
                 },
             )
+            TextButton(
+                onClick = {
+                    draft = PhotoFilter()
+                    authorText = ""
+                    airlineText = ""
+                    modelText = ""
+                    cameraText = ""
+                    lensText = ""
+                    registrationText = ""
+                    locationText = ""
+                    onClearSuggestions("userid")
+                    onClearSuggestions("iatacode")
+                    onClearSuggestions("registration_number")
+                    onClearSuggestions("airline")
+                    onClearSuggestions("aircraft_model")
+                    onClearSuggestions("cam")
+                    onClearSuggestions("lens")
+                },
+                modifier = Modifier.align(Alignment.End),
+            ) {
+                Text("清除筛选")
+            }
         }
     }
 }

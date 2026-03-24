@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cn.syphotos.android.model.AirlineDirectoryItem
@@ -127,6 +128,7 @@ private fun TreeCard(
     onClick: () -> Unit,
     onOpenPhotos: () -> Unit,
 ) {
+    val countColor = if (count == 0) Color(0xFFD7A1A1) else MaterialTheme.colorScheme.primary
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -163,7 +165,7 @@ private fun TreeCard(
             Text(
                 "$count 张",
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
+                color = countColor,
             )
         }
     }
@@ -187,7 +189,11 @@ private fun RegistrationRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(item.registration.ifBlank { item.label }, style = MaterialTheme.typography.bodyLarge)
-            Text("${item.photoCount} 张", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "${item.photoCount} 张",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (item.photoCount == 0) Color(0xFFD7A1A1) else MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }

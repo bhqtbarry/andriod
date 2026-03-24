@@ -42,7 +42,7 @@ fun AppNavHost(
                 onRequestSuggestions = viewModel::requestSuggestions,
                 onClearSuggestions = viewModel::clearSuggestions,
                 onOpenPhoto = { photoId ->
-                    viewModel.prefetchPhotoDetail(photoId)
+                    viewModel.openPhotoGallery(photoId, viewModel.uiState.photos)
                     onOpenPhoto(photoId)
                 },
                 onToggleLike = viewModel::toggleLike,
@@ -52,7 +52,7 @@ fun AppNavHost(
             MapScreen(
                 state = viewModel.uiState,
                 onApplyMapSelection = {
-                    viewModel.updateFilter(viewModel.uiState.photoFilter.copy(locationCode = it))
+                    viewModel.updateFilter(cn.syphotos.android.model.PhotoFilter(locationCode = it))
                     navController.navigate(AppDestination.AllPhotos.route)
                 },
             )
@@ -70,15 +70,15 @@ fun AppNavHost(
             CategoryScreen(
                 state = viewModel.uiState.categoryState,
                 onSelectAirline = { airline ->
-                    viewModel.updateFilter(viewModel.uiState.photoFilter.copy(airline = airline))
+                    viewModel.updateFilter(cn.syphotos.android.model.PhotoFilter(airline = airline))
                     navController.navigate(AppDestination.AllPhotos.route)
                 },
                 onSelectTypecode = { airline, typecode ->
-                    viewModel.updateFilter(viewModel.uiState.photoFilter.copy(airline = airline, aircraftModel = typecode))
+                    viewModel.updateFilter(cn.syphotos.android.model.PhotoFilter(airline = airline, aircraftModel = typecode))
                     navController.navigate(AppDestination.AllPhotos.route)
                 },
                 onSelectRegistration = { registration ->
-                    viewModel.updateFilter(viewModel.uiState.photoFilter.copy(registration = registration))
+                    viewModel.updateFilter(cn.syphotos.android.model.PhotoFilter(registration = registration))
                     navController.navigate(AppDestination.AllPhotos.route)
                 },
                 onExpandAirline = viewModel::loadAirlineTypecodes,
@@ -93,7 +93,7 @@ fun AppNavHost(
                 onLogin = viewModel::login,
                 onLogout = viewModel::logout,
                 onOpenPhoto = { photoId ->
-                    viewModel.prefetchPhotoDetail(photoId)
+                    viewModel.openPhotoGallery(photoId, viewModel.uiState.myState.works)
                     onOpenPhoto(photoId)
                 },
                 onDeletePhoto = viewModel::deleteMyPhoto,
@@ -108,7 +108,8 @@ fun AppNavHost(
             PhotoViewerScreen(
                 state = viewModel.uiState.viewerState,
                 fallbackPhotoTitle = viewModel.findPhoto(photoId)?.title.orEmpty(),
-                onToggleLike = { viewModel.toggleLike(photoId) },
+                onToggleLike = { currentId -> viewModel.toggleLike(currentId) },
+                onPhotoChanged = viewModel::prefetchPhotoDetail,
                 onApplyFilter = { filter ->
                     viewModel.updateFilter(filter)
                     navController.popBackStack()

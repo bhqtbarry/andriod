@@ -1,5 +1,6 @@
 package cn.syphotos.android.ui.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -191,7 +192,8 @@ fun MyScreen(
                                     contentDescription = photo.title,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(180.dp),
+                                        .height(180.dp)
+                                        .clickable { onOpenPhoto(photo.id) },
                                     contentScale = ContentScale.Crop,
                                 )
                             }
@@ -199,7 +201,6 @@ fun MyScreen(
                             Text(photo.airline.ifBlank { photo.aircraftModel })
                             Text(photo.registration.ifBlank { photo.createdAt }, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(onClick = { onOpenPhoto(photo.id) }) { Text("查看大图") }
                                 TextButton(onClick = { pendingDelete = photo }) { Text("删除") }
                             }
                         }

@@ -2,6 +2,7 @@ package cn.syphotos.android.ui.state
 
 import android.app.Application
 import android.net.Uri
+import androidx.exifinterface.media.ExifInterface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -115,7 +116,12 @@ class AppViewModel(
         uiState = currentState.copy(
             photos = updatedPhotos,
             myState = currentState.myState.copy(likedPhotos = updatedPhotos.filter { it.liked }),
-            viewerState = currentState.viewerState.copy(detail = updatedViewer),
+            viewerState = currentState.viewerState.copy(
+                detail = updatedViewer,
+                gallery = currentState.viewerState.gallery.map {
+                    if (it.id == photoId) it.copy(liked = !it.liked) else it
+                },
+            ),
         )
     }
 
@@ -124,6 +130,7 @@ class AppViewModel(
         uiState = uiState.copy(
             viewerState = uiState.viewerState.copy(
                 detail = existingPhoto?.let { PhotoDetail(photo = it) },
+                currentPhotoId = photoId,
                 isLoading = true,
                 errorMessage = null,
             ),
@@ -133,18 +140,36 @@ class AppViewModel(
                 withContext(Dispatchers.IO) { webRepository.getPhotoDetail(photoId) }
             }.onSuccess { detail ->
                 uiState = uiState.copy(
-                    viewerState = ViewerUiState(detail = detail, isLoading = false),
+                    viewerState = uiState.viewerState.copy(
+                        detail = detail,
+                        currentPhotoId = detail.photo.id,
+                        isLoading = false,
+                        errorMessage = null,
+                    ),
                 )
             }.onFailure { error ->
                 uiState = uiState.copy(
-                    viewerState = ViewerUiState(
+                    viewerState = uiState.viewerState.copy(
                         detail = uiState.viewerState.detail,
+                        currentPhotoId = photoId,
                         isLoading = false,
                         errorMessage = "Photo detail unavailable: ${error.message}",
                     ),
                 )
             }
         }
+    }
+
+    fun openPhotoGallery(photoId: Long, gallery: List<PhotoItem>) {
+        uiState = uiState.copy(
+            viewerState = ViewerUiState(
+                detail = gallery.firstOrNull { it.id == photoId }?.let { PhotoDetail(photo = it) },
+                gallery = gallery,
+                currentPhotoId = photoId,
+                isLoading = true,
+            ),
+        )
+        prefetchPhotoDetail(photoId)
     }
 
     fun requestSuggestions(field: String, query: String) {
@@ -540,7 +565,12 @@ class AppViewModel(
                         resolver.openInputStream(uri)?.use { input ->
                             tempFile.outputStream().use { output -> input.copyTo(output) }
                         } ?: throw IllegalStateException("无法读取所选图片。")
-                        webRepository.extractUploadExif(tempFile, fileName, mimeType)
+                        val localExif = readLocalExif(tempFile)
+                        if (localExif != UploadExifInfo()) {
+                            localExif
+                        } else {
+                            webRepository.extractUploadExif(tempFile, fileName, mimeType)
+                        }
                     } finally {
                         tempFile.delete()
                     }
@@ -579,6 +609,20 @@ class AppViewModel(
         val time = parts[1].split(":")
         if (date.size != 3 || time.size < 2) return ""
         return "${date[0]}-${date[1]}-${date[2]}T${time[0]}:${time[1]}"
+    }
+
+    private fun readLocalExif(file: File): UploadExifInfo {
+        val exif = ExifInterface(file)
+        val exposureTime = exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME).orEmpty()
+        return UploadExifInfo(
+            cameraModel = exif.getAttribute(ExifInterface.TAG_MODEL).orEmpty(),
+            lensModel = exif.getAttribute(ExifInterface.TAG_LENS_MODEL).orEmpty(),
+            focalLength = exif.getAttribute(ExifInterface.TAG_FOCAL_LENGTH).orEmpty().substringBefore('/'),
+            iso = exif.getAttribute(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY).orEmpty(),
+            aperture = exif.getAttribute(ExifInterface.TAG_F_NUMBER).orEmpty(),
+            shutterSpeed = if (exposureTime.isNotBlank()) exposureTime else exif.getAttribute(ExifInterface.TAG_SHUTTER_SPEED_VALUE).orEmpty(),
+            dateTimeOriginal = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL).orEmpty(),
+        )
     }
 
     private fun emptyMyState(): MyUiState = MyUiState(authSession = sessionStore.read())
@@ -670,6 +714,8 @@ data class MyUiState(
 
 data class ViewerUiState(
     val detail: PhotoDetail? = null,
+    val gallery: List<PhotoItem> = emptyList(),
+    val currentPhotoId: Long? = null,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
 )
