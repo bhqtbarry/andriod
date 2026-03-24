@@ -15,6 +15,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import cn.syphotos.android.ui.state.AppUiState
+import com.baidu.mapapi.map.BitmapDescriptor
 import com.baidu.mapapi.map.BaiduMap
 import com.baidu.mapapi.map.BitmapDescriptorFactory
 import com.baidu.mapapi.map.MapStatusUpdateFactory
@@ -36,6 +37,9 @@ fun MapScreen(
             map.setMapType(BaiduMap.MAP_TYPE_NORMAL)
             map.isTrafficEnabled = false
         }
+    }
+    val markerIcon: BitmapDescriptor = remember {
+        BitmapDescriptorFactory.fromAsset("Icon_mark.png")
     }
 
     DisposableEffect(lifecycleOwner, mapView) {
@@ -69,7 +73,7 @@ fun MapScreen(
                 MarkerOptions()
                     .position(point)
                     .title("${cluster.locationCode} ${cluster.photoCount}张")
-                    .icon(BitmapDescriptorFactory.defaultMarker()),
+                    .icon(markerIcon),
             ) as? Marker
             marker?.extraInfo = android.os.Bundle().apply {
                 putString("locationCode", cluster.locationCode)
