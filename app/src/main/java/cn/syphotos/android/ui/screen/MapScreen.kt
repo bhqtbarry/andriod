@@ -15,7 +15,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import cn.syphotos.android.ui.state.AppUiState
-import com.baidu.mapapi.map.BitmapDescriptor
 import com.baidu.mapapi.map.BaiduMap
 import com.baidu.mapapi.map.BitmapDescriptorFactory
 import com.baidu.mapapi.map.MapStatusUpdateFactory
@@ -38,7 +37,7 @@ fun MapScreen(
             map.isTrafficEnabled = false
         }
     }
-    val markerIcon: BitmapDescriptor = remember {
+    val markerIcon = remember {
         BitmapDescriptorFactory.fromAsset("Icon_mark.png")
     }
 
@@ -69,12 +68,11 @@ fun MapScreen(
         clusters.forEach { cluster ->
             val point = LatLng(cluster.latitude ?: return@forEach, cluster.longitude ?: return@forEach)
             boundsBuilder.include(point)
-            val marker = baiduMap.addOverlay(
-                MarkerOptions()
-                    .position(point)
-                    .title("${cluster.locationCode} ${cluster.photoCount}张")
-                    .icon(markerIcon),
-            ) as? Marker
+            val markerOptions = MarkerOptions()
+                .position(point)
+                .title("${cluster.locationCode} ${cluster.photoCount}张")
+            markerIcon?.let(markerOptions::icon)
+            val marker = baiduMap.addOverlay(markerOptions) as? Marker
             marker?.extraInfo = android.os.Bundle().apply {
                 putString("locationCode", cluster.locationCode)
             }
