@@ -26,7 +26,9 @@ import cn.syphotos.android.model.SearchSuggestion
 import cn.syphotos.android.model.UploadConfig
 import cn.syphotos.android.model.UploadExifInfo
 import cn.syphotos.android.model.UserSummary
+import cn.syphotos.android.model.ViewerPhotoState
 import java.io.File
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -131,6 +133,15 @@ class AppViewModel(
             viewerState = uiState.viewerState.copy(
                 detail = existingPhoto?.let { PhotoDetail(photo = it) },
                 currentPhotoId = photoId,
+                photosById = uiState.viewerState.photosById + (
+                    photoId to (
+                        uiState.viewerState.photosById[photoId] ?: ViewerPhotoState(
+                            photoId = photoId,
+                            originalUrl = existingPhoto?.originalUrl.orEmpty(),
+                            thumbUrl = existingPhoto?.thumbUrl.orEmpty(),
+                        )
+                    ).copy(isLoading = true)
+                ),
                 isLoading = true,
                 errorMessage = null,
             ),
@@ -143,6 +154,14 @@ class AppViewModel(
                     viewerState = uiState.viewerState.copy(
                         detail = detail,
                         currentPhotoId = detail.photo.id,
+                        photosById = uiState.viewerState.photosById + (
+                            detail.photo.id to ViewerPhotoState(
+                                photoId = detail.photo.id,
+                                originalUrl = detail.originalUrl.ifBlank { detail.photo.originalUrl },
+                                thumbUrl = detail.photo.thumbUrl,
+                                isLoading = false,
+                            )
+                        ),
                         isLoading = false,
                         errorMessage = null,
                     ),
@@ -152,6 +171,15 @@ class AppViewModel(
                     viewerState = uiState.viewerState.copy(
                         detail = uiState.viewerState.detail,
                         currentPhotoId = photoId,
+                        photosById = uiState.viewerState.photosById + (
+                            photoId to (
+                                uiState.viewerState.photosById[photoId] ?: ViewerPhotoState(
+                                    photoId = photoId,
+                                    originalUrl = existingPhoto?.originalUrl.orEmpty(),
+                                    thumbUrl = existingPhoto?.thumbUrl.orEmpty(),
+                                )
+                            ).copy(isLoading = false)
+                        ),
                         isLoading = false,
                         errorMessage = "Photo detail unavailable: ${error.message}",
                     ),
@@ -166,10 +194,75 @@ class AppViewModel(
                 detail = gallery.firstOrNull { it.id == photoId }?.let { PhotoDetail(photo = it) },
                 gallery = gallery,
                 currentPhotoId = photoId,
+                photosById = gallery.associate { photo ->
+                    photo.id to ViewerPhotoState(
+                        photoId = photo.id,
+                        originalUrl = photo.originalUrl,
+                        thumbUrl = photo.thumbUrl,
+                    )
+                },
                 isLoading = true,
             ),
         )
         prefetchPhotoDetail(photoId)
+    }
+
+    fun prefetchGalleryNeighbors(photoId: Long) {
+        val gallery = uiState.viewerState.gallery
+        val index = gallery.indexOfFirst { it.id == photoId }
+        if (index < 0) return
+        listOfNotNull(
+            gallery.getOrNull(index - 1),
+            gallery.getOrNull(index + 1),
+        ).forEach { photo ->
+            val cached = uiState.viewerState.photosById[photo.id]
+            if (cached != null && (cached.originalUrl.isNotBlank() || cached.isLoading)) {
+                return@forEach
+            }
+            uiState = uiState.copy(
+                viewerState = uiState.viewerState.copy(
+                    photosById = uiState.viewerState.photosById + (
+                        photo.id to ViewerPhotoState(
+                            photoId = photo.id,
+                            originalUrl = photo.originalUrl,
+                            thumbUrl = photo.thumbUrl,
+                            isLoading = true,
+                        )
+                    ),
+                ),
+            )
+            viewModelScope.launch {
+                runCatching {
+                    withContext(Dispatchers.IO) { webRepository.getPhotoDetail(photo.id) }
+                }.onSuccess { detail ->
+                    uiState = uiState.copy(
+                        viewerState = uiState.viewerState.copy(
+                            photosById = uiState.viewerState.photosById + (
+                                photo.id to ViewerPhotoState(
+                                    photoId = photo.id,
+                                    originalUrl = detail.originalUrl.ifBlank { detail.photo.originalUrl },
+                                    thumbUrl = detail.photo.thumbUrl,
+                                    isLoading = false,
+                                )
+                            ),
+                        ),
+                    )
+                }.onFailure {
+                    uiState = uiState.copy(
+                        viewerState = uiState.viewerState.copy(
+                            photosById = uiState.viewerState.photosById + (
+                                photo.id to ViewerPhotoState(
+                                    photoId = photo.id,
+                                    originalUrl = photo.originalUrl,
+                                    thumbUrl = photo.thumbUrl,
+                                    isLoading = false,
+                                )
+                            ),
+                        ),
+                    )
+                }
+            }
+        }
     }
 
     fun requestSuggestions(field: String, query: String) {
@@ -200,10 +293,19 @@ class AppViewModel(
             uploadState = uiState.uploadState.copy(
                 selectedImageUri = uri,
                 fileName = fileName,
+                cameraModel = "",
+                lensModel = "",
+                focalLength = "",
+                iso = "",
+                aperture = "",
+                shutter = "",
+                shootingTime = "",
+                shootingLocation = "",
                 errorMessage = null,
                 successMessage = null,
                 exifInfo = UploadExifInfo(),
                 exifMessage = null,
+                registrationLookupMessage = null,
             ),
         )
         fillUploadExif(uri, fileName)
@@ -211,6 +313,10 @@ class AppViewModel(
 
     fun updateUploadDraft(update: (UploadUiState) -> UploadUiState) {
         uiState = uiState.copy(uploadState = update(uiState.uploadState).copy(errorMessage = null, successMessage = null))
+    }
+
+    fun updateMySelectedTab(tab: Int) {
+        uiState = uiState.copy(myState = uiState.myState.copy(selectedTab = tab))
     }
 
     fun updateUploadRegistration(value: String) {
@@ -343,6 +449,8 @@ class AppViewModel(
     }
 
     fun findPhoto(photoId: Long): PhotoItem? = uiState.photos.firstOrNull { it.id == photoId }
+        ?: uiState.myState.works.firstOrNull { it.id == photoId }
+        ?: uiState.viewerState.gallery.firstOrNull { it.id == photoId }
         ?: uiState.viewerState.detail?.photo?.takeIf { it.id == photoId }
 
     fun deleteMyPhoto(photo: PhotoItem) {
@@ -519,7 +627,13 @@ class AppViewModel(
                     )
                 }
             }.onSuccess { remoteState ->
-                uiState = uiState.copy(myState = remoteState.copy(isLoading = false, isDeleting = false))
+                uiState = uiState.copy(
+                    myState = remoteState.copy(
+                        isLoading = false,
+                        isDeleting = false,
+                        selectedTab = uiState.myState.selectedTab,
+                    ),
+                )
             }.onFailure { error ->
                 if (isAuthFailure(error)) {
                     sessionStore.clear()
@@ -579,21 +693,22 @@ class AppViewModel(
                         tempFile.delete()
                     }
                 }
-            }.onSuccess { exif ->
+            }.onSuccess { rawExif ->
+                val exif = normalizeUploadExif(rawExif)
                 val current = uiState.uploadState
                 val hasExif = hasExifData(exif)
                 uiState = uiState.copy(
                     uploadState = current.copy(
                         exifInfo = exif,
                         exifMessage = if (hasExif) "EXIF 信息读取成功" else "图片无EXIF信息",
-                        cameraModel = current.cameraModel.ifBlank { exif.cameraModel },
-                        lensModel = current.lensModel.ifBlank { exif.lensModel },
-                        focalLength = current.focalLength.ifBlank { exif.focalLength },
-                        iso = current.iso.ifBlank { exif.iso },
-                        aperture = current.aperture.ifBlank { exif.aperture },
-                        shutter = current.shutter.ifBlank { exif.shutterSpeed },
-                        shootingLocation = current.shootingLocation.ifBlank { exif.nearestAirport.uppercase() },
-                        shootingTime = current.shootingTime.ifBlank { formatExifDateTime(exif.dateTimeOriginal) },
+                        cameraModel = exif.cameraModel,
+                        lensModel = exif.lensModel,
+                        focalLength = exif.focalLength,
+                        iso = exif.iso,
+                        aperture = exif.aperture,
+                        shutter = exif.shutterSpeed,
+                        shootingLocation = exif.nearestAirport.uppercase(),
+                        shootingTime = formatExifDateTime(exif.dateTimeOriginal),
                     ),
                 )
             }.onFailure {
@@ -618,15 +733,48 @@ class AppViewModel(
 
     private fun readLocalExif(file: File): UploadExifInfo {
         val exif = ExifInterface(file)
-        val exposureTime = exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME).orEmpty()
         return UploadExifInfo(
             cameraModel = exif.getAttribute(ExifInterface.TAG_MODEL).orEmpty(),
             lensModel = exif.getAttribute(ExifInterface.TAG_LENS_MODEL).orEmpty(),
-            focalLength = exif.getAttribute(ExifInterface.TAG_FOCAL_LENGTH).orEmpty().substringBefore('/'),
+            focalLength = formatRational(exif.getAttribute(ExifInterface.TAG_FOCAL_LENGTH).orEmpty()),
             iso = exif.getAttribute(ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY).orEmpty(),
-            aperture = exif.getAttribute(ExifInterface.TAG_F_NUMBER).orEmpty(),
-            shutterSpeed = if (exposureTime.isNotBlank()) exposureTime else exif.getAttribute(ExifInterface.TAG_SHUTTER_SPEED_VALUE).orEmpty(),
+            aperture = formatRational(exif.getAttribute(ExifInterface.TAG_F_NUMBER).orEmpty()),
+            shutterSpeed = formatShutterValue(exif.getAttribute(ExifInterface.TAG_EXPOSURE_TIME).orEmpty()),
             dateTimeOriginal = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL).orEmpty(),
+        )
+    }
+
+    private fun formatRational(value: String): String {
+        if (value.isBlank()) return ""
+        if (!value.contains('/')) return value
+        val numerator = value.substringBefore('/').toDoubleOrNull() ?: return value
+        val denominator = value.substringAfter('/').toDoubleOrNull()?.takeIf { it != 0.0 } ?: return value
+        val result = numerator / denominator
+        return if (result % 1.0 == 0.0) result.toInt().toString() else "%.1f".format(result)
+    }
+
+    private fun formatShutterValue(value: String): String {
+        if (value.isBlank()) return ""
+        val normalized = if (value.contains('/')) {
+            val numerator = value.substringBefore('/').toDoubleOrNull() ?: return value
+            val denominator = value.substringAfter('/').toDoubleOrNull()?.takeIf { it != 0.0 } ?: return value
+            numerator / denominator
+        } else {
+            value.toDoubleOrNull() ?: return value
+        }
+        if (normalized <= 0.0) return value
+        return if (normalized < 1.0) {
+            "1/${(1.0 / normalized).roundToInt()}"
+        } else {
+            "%.1f".format(normalized).trimEnd('0').trimEnd('.')
+        }
+    }
+
+    private fun normalizeUploadExif(exif: UploadExifInfo): UploadExifInfo {
+        return exif.copy(
+            focalLength = formatRational(exif.focalLength),
+            aperture = formatRational(exif.aperture),
+            shutterSpeed = formatShutterValue(exif.shutterSpeed),
         )
     }
 
@@ -721,6 +869,7 @@ data class MyUiState(
     val pending: List<ReviewItem> = emptyList(),
     val rejected: List<ReviewItem> = emptyList(),
     val sessions: List<DeviceSession> = emptyList(),
+    val selectedTab: Int = 0,
     val isLoading: Boolean = false,
     val isDeleting: Boolean = false,
     val errorMessage: String? = null,
@@ -732,6 +881,7 @@ data class ViewerUiState(
     val detail: PhotoDetail? = null,
     val gallery: List<PhotoItem> = emptyList(),
     val currentPhotoId: Long? = null,
+    val photosById: Map<Long, ViewerPhotoState> = emptyMap(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
 )

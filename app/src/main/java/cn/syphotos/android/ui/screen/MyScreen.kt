@@ -25,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,6 +48,7 @@ fun MyScreen(
     onLogin: (String, String) -> Unit,
     onLogout: () -> Unit,
     onRefresh: () -> Unit,
+    onTabSelected: (Int) -> Unit,
     onOpenPhoto: (Long) -> Unit,
     onDeletePhoto: (PhotoItem) -> Unit,
 ) {
@@ -56,7 +56,7 @@ fun MyScreen(
     var loginInput by remember { mutableStateOf("") }
     var passwordInput by remember { mutableStateOf("") }
     var pendingDelete by remember { mutableStateOf<PhotoItem?>(null) }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    val selectedTab = state.selectedTab
 
     pendingDelete?.let { photo ->
         AlertDialog(
@@ -99,8 +99,8 @@ fun MyScreen(
             },
     ) {
         TabRow(selectedTabIndex = selectedTab) {
-            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("资料") })
-            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("作品管理") })
+            Tab(selected = selectedTab == 0, onClick = { onTabSelected(0) }, text = { Text("资料") })
+            Tab(selected = selectedTab == 1, onClick = { onTabSelected(1) }, text = { Text("作品管理") })
         }
 
         when (selectedTab) {

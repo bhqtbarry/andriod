@@ -135,6 +135,13 @@ data class MySummaryStats(
     val unreadNotifications: Int = 0,
 )
 
+data class ViewerPhotoState(
+    val photoId: Long,
+    val originalUrl: String = "",
+    val thumbUrl: String = "",
+    val isLoading: Boolean = false,
+)
+
 data class UploadConfig(
     val maxFileSizeMb: Int = 40,
     val minAspectRatio: String = "1:2",

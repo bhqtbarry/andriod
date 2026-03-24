@@ -351,7 +351,7 @@ class WebSyPhotosRepository(
                 focalLength = data.optString("FocalLength"),
                 iso = data.optString("ISO"),
                 aperture = data.optString("Aperture"),
-                shutterSpeed = data.optString("ShutterSpeed"),
+                shutterSpeed = normalizeShutter(data.optString("ShutterSpeed")),
                 nearestAirport = data.optString("NearestAirport"),
                 dateTimeOriginal = data.optString("DateTimeOriginal"),
             )
@@ -623,6 +623,18 @@ class WebSyPhotosRepository(
                 .ifBlank { json.optString("message") }
                 .ifBlank { null }
         }.getOrNull()
+    }
+
+    private fun normalizeShutter(value: String): String {
+        if (value.isBlank()) return ""
+        if (value.contains('/')) return value
+        val numeric = value.toDoubleOrNull() ?: return value
+        if (numeric <= 0.0) return value
+        return if (numeric < 1.0) {
+            "1/${kotlin.math.round(1.0 / numeric).toInt()}"
+        } else {
+            "%.1f".format(numeric).trimEnd('0').trimEnd('.')
+        }
     }
 
     private fun refreshSession(): Boolean {

@@ -34,12 +34,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.ViewerUiState
+import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,25 +54,46 @@ fun PhotoViewerScreen(
     onApplyFilter: (PhotoFilter) -> Unit,
 ) {
     val strings = LocalAppStrings.current
+    val context = LocalContext.current
     val gallery = state.gallery.ifEmpty { state.detail?.photo?.let(::listOf).orEmpty() }
     val currentPhotoId = state.currentPhotoId ?: state.detail?.photo?.id
     val initialPage = remember(gallery, currentPhotoId) {
         gallery.indexOfFirst { it.id == currentPhotoId }.takeIf { it >= 0 } ?: 0
     }
     val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { gallery.size.coerceAtLeast(1) })
+
     var scale by rememberSaveable { mutableFloatStateOf(1f) }
     var offsetX by rememberSaveable { mutableFloatStateOf(0f) }
     var offsetY by rememberSaveable { mutableFloatStateOf(0f) }
     var showDetails by rememberSaveable { mutableStateOf(false) }
+
     val pagePhoto = gallery.getOrNull(pagerState.currentPage)
     val photo = state.detail?.photo?.takeIf { it.id == pagePhoto?.id } ?: pagePhoto ?: state.detail?.photo
-    val imageUrl = state.detail?.takeIf { it.photo.id == photo?.id }?.originalUrl?.ifBlank { photo?.originalUrl }.orEmpty()
 
     LaunchedEffect(pagerState.currentPage, gallery) {
-        gallery.getOrNull(pagerState.currentPage)?.id?.let { onPhotoChanged(it) }
+        val currentId = gallery.getOrNull(pagerState.currentPage)?.id ?: return@LaunchedEffect
+        onPhotoChanged(currentId)
         scale = 1f
         offsetX = 0f
         offsetY = 0f
+    }
+
+    LaunchedEffect(gallery, pagerState.currentPage) {
+        val imageLoader = SingletonImageLoader.get(context)
+        listOfNotNull(
+            gallery.getOrNull(pagerState.currentPage - 1),
+            gallery.getOrNull(pagerState.currentPage),
+            gallery.getOrNull(pagerState.currentPage + 1),
+        ).forEach { item ->
+            val cached = state.photosById[item.id]
+            val url = cached?.originalUrl?.ifBlank { item.originalUrl }.orEmpty()
+            if (url.isBlank()) return@forEach
+            imageLoader.enqueue(
+                ImageRequest.Builder(context)
+                    .data(url)
+                    .build(),
+            )
+        }
     }
 
     Surface(
@@ -87,34 +111,26 @@ fun PhotoViewerScreen(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
                 userScrollEnabled = scale == 1f,
+                beyondViewportPageCount = 1,
             ) { page ->
                 val item = gallery.getOrNull(page)
+                val cached = item?.let { state.photosById[it.id] }
                 val matchedDetail = state.detail?.takeIf { it.photo.id == item?.id }
-                val pageImageUrl = if (matchedDetail != null) {
-                    matchedDetail.originalUrl.ifBlank { item?.originalUrl }.orEmpty()
-                } else {
-                    item?.originalUrl.orEmpty()
-                }
+                val thumbUrl = listOf(
+                    cached?.thumbUrl.orEmpty(),
+                    item?.thumbUrl.orEmpty(),
+                ).firstOrNull { it.isNotBlank() }.orEmpty()
+                val pageImageUrl = listOf(
+                    matchedDetail?.originalUrl.orEmpty(),
+                    cached?.originalUrl.orEmpty(),
+                    item?.originalUrl.orEmpty(),
+                    thumbUrl,
+                ).firstOrNull { it.isNotBlank() }.orEmpty()
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .pointerInput(pageImageUrl, scale) {
-                            if (scale > 1f) {
-                                detectTransformGestures { _, pan, zoom, _ ->
-                                    val newScale = (scale * zoom).coerceIn(1f, 4f)
-                                    if (newScale == 1f) {
-                                        scale = 1f
-                                        offsetX = 0f
-                                        offsetY = 0f
-                                    } else {
-                                        scale = newScale
-                                        offsetX += pan.x
-                                        offsetY += pan.y
-                                    }
-                                }
-                            }
-                        }
-                        .pointerInput(pageImageUrl) {
                             detectTapGestures(
                                 onDoubleTap = {
                                     if (scale > 1f) {
@@ -126,15 +142,49 @@ fun PhotoViewerScreen(
                                     }
                                 },
                             )
+                        }
+                        .pointerInput(pageImageUrl, scale) {
+                            detectTransformGestures { _, pan, zoom, _ ->
+                                val nextScale = (scale * zoom).coerceIn(1f, 4f)
+                                if (nextScale == 1f) {
+                                    scale = 1f
+                                    offsetX = 0f
+                                    offsetY = 0f
+                                } else {
+                                    scale = nextScale
+                                    offsetX += pan.x
+                                    offsetY += pan.y
+                                }
+                            }
                         },
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (pageImageUrl.isNotBlank()) {
+                    if (thumbUrl.isNotBlank()) {
                         AsyncImage(
-                            model = pageImageUrl,
+                            model = ImageRequest.Builder(context)
+                                .data(thumbUrl)
+                                .build(),
                             contentDescription = item?.title ?: fallbackPhotoTitle,
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    translationX = offsetX
+                                    translationY = offsetY
+                                },
+                            contentScale = ContentScale.Fit,
+                        )
+                    }
+                    if (pageImageUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(pageImageUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = item?.title ?: fallbackPhotoTitle,
+                            modifier = Modifier
+                                .fillMaxSize()
                                 .graphicsLayer {
                                     scaleX = scale
                                     scaleY = scale
@@ -162,7 +212,7 @@ fun PhotoViewerScreen(
             ) {
                 Text("详细信息")
             }
-            if (state.isLoading) {
+            if (state.isLoading && state.detail == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             }
         }

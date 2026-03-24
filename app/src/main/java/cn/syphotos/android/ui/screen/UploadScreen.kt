@@ -56,8 +56,11 @@ fun UploadScreen(
                 if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
             }
         } ?: uri?.lastPathSegment
-        if (uri != null && !fileName.isNullOrBlank()) {
-            onChooseImage(uri.toString(), fileName)
+        if (uri != null) {
+            onChooseImage(
+                uri.toString(),
+                fileName?.takeIf { it.isNotBlank() } ?: (uri.lastPathSegment ?: "selected-image.jpg"),
+            )
         }
     }
 

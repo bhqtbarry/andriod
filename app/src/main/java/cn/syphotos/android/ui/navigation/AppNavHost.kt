@@ -93,6 +93,7 @@ fun AppNavHost(
                 onLogin = viewModel::login,
                 onLogout = viewModel::logout,
                 onRefresh = viewModel::refreshMyPage,
+                onTabSelected = viewModel::updateMySelectedTab,
                 onOpenPhoto = { photoId ->
                     viewModel.openPhotoGallery(photoId, viewModel.uiState.myState.works)
                     onOpenPhoto(photoId)
@@ -110,7 +111,10 @@ fun AppNavHost(
                 state = viewModel.uiState.viewerState,
                 fallbackPhotoTitle = viewModel.findPhoto(photoId)?.title.orEmpty(),
                 onToggleLike = { currentId -> viewModel.toggleLike(currentId) },
-                onPhotoChanged = viewModel::prefetchPhotoDetail,
+                onPhotoChanged = { currentId ->
+                    viewModel.prefetchPhotoDetail(currentId)
+                    viewModel.prefetchGalleryNeighbors(currentId)
+                },
                 onApplyFilter = { filter ->
                     viewModel.updateFilter(filter)
                     navController.popBackStack()
