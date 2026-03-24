@@ -7,7 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import cn.syphotos.android.data.FakeSyPhotosRepository
 import cn.syphotos.android.data.SessionStore
 import cn.syphotos.android.data.SyPhotosRepository
 import cn.syphotos.android.data.WebSyPhotosRepository
@@ -32,11 +31,10 @@ import kotlinx.coroutines.withContext
 class AppViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
-    private val fallbackRepository: SyPhotosRepository = FakeSyPhotosRepository()
     private val sessionStore = SessionStore(application)
     private val webRepository = WebSyPhotosRepository(sessionStore = sessionStore)
 
-    var uiState by mutableStateOf(buildFallbackState())
+    var uiState by mutableStateOf(AppUiState())
         private set
 
     init {
@@ -77,8 +75,8 @@ class AppViewModel(
     fun logout() {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { webRepository.logout() }
-            uiState = buildFallbackState().copy(
-                myState = buildFallbackMyState().copy(
+            uiState = uiState.copy(
+                myState = emptyMyState().copy(
                     authSession = AuthSession(),
                     errorMessage = null,
                     authErrorMessage = null,
@@ -108,9 +106,10 @@ class AppViewModel(
     }
 
     fun prefetchPhotoDetail(photoId: Long) {
+        val existingPhoto = findPhoto(photoId)
         uiState = uiState.copy(
             viewerState = uiState.viewerState.copy(
-                detail = uiState.viewerState.detail ?: PhotoDetail(photo = findPhoto(photoId)),
+                detail = uiState.viewerState.detail ?: existingPhoto?.let { PhotoDetail(photo = it) },
                 isLoading = true,
                 errorMessage = null,
             ),
@@ -125,7 +124,7 @@ class AppViewModel(
             }.onFailure { error ->
                 uiState = uiState.copy(
                     viewerState = ViewerUiState(
-                        detail = uiState.viewerState.detail ?: fallbackRepository.getPhotoDetail(photoId),
+                        detail = uiState.viewerState.detail,
                         isLoading = false,
                         errorMessage = "Photo detail unavailable: ${error.message}",
                     ),
@@ -144,9 +143,7 @@ class AppViewModel(
         viewModelScope.launch {
             val items = runCatching {
                 withContext(Dispatchers.IO) { webRepository.getSuggestions(field, query, uiState.photoFilter) }
-            }.getOrElse {
-                fallbackRepository.getSuggestions(field, query, uiState.photoFilter)
-            }
+            }.getOrElse { emptyList() }
             uiState = uiState.copy(
                 suggestionState = uiState.suggestionState.copy(itemsByField = uiState.suggestionState.itemsByField + (field to items)),
             )
@@ -263,9 +260,8 @@ class AppViewModel(
         }
     }
 
-    fun findPhoto(photoId: Long): PhotoItem = uiState.photos.firstOrNull { it.id == photoId }
+    fun findPhoto(photoId: Long): PhotoItem? = uiState.photos.firstOrNull { it.id == photoId }
         ?: uiState.viewerState.detail?.photo?.takeIf { it.id == photoId }
-        ?: fallbackRepository.getPhotos().first { it.id == photoId }
 
     private fun refreshAll() {
         refreshFeed(uiState.photoFilter)
@@ -296,14 +292,16 @@ class AppViewModel(
                     feedState = FeedUiState(),
                 )
             }.onFailure { error ->
-                val fallbackPhotos = fallbackRepository.getPhotos(filter)
                 uiState = uiState.copy(
                     photoFilter = filter,
-                    photos = fallbackPhotos,
+                    photos = emptyList(),
+                    categoryState = uiState.categoryState.copy(
+                        airlines = emptyList(),
+                        models = emptyList(),
+                    ),
                     feedState = FeedUiState(
                         isLoading = false,
                         errorMessage = "Photo feed unavailable: ${error.message}",
-                        usingFallbackData = true,
                     ),
                 )
             }
@@ -314,9 +312,7 @@ class AppViewModel(
         viewModelScope.launch {
             val airlineDirectory = runCatching {
                 withContext(Dispatchers.IO) { webRepository.getAirlineDirectory() }
-            }.getOrElse {
-                fallbackRepository.getAirlineDirectory()
-            }
+            }.getOrElse { emptyList() }
             uiState = uiState.copy(
                 categoryState = uiState.categoryState.copy(airlineDirectory = airlineDirectory),
             )
@@ -333,7 +329,7 @@ class AppViewModel(
             }.onFailure { error ->
                 uiState = uiState.copy(
                     mapState = MapUiState(
-                        clusters = fallbackRepository.getMapClusters(filter),
+                        clusters = emptyList(),
                         isLoading = false,
                         errorMessage = "Map data unavailable: ${error.message}",
                     ),
@@ -343,14 +339,14 @@ class AppViewModel(
     }
 
     private fun refreshUpload() {
-        val config = runCatching { webRepository.getUploadConfig() }.getOrElse { fallbackRepository.getUploadConfig() }
+        val config = runCatching { webRepository.getUploadConfig() }.getOrElse { UploadConfig() }
         uiState = uiState.copy(uploadState = uiState.uploadState.copy(isLoading = false, config = config, errorMessage = null))
     }
 
     private fun refreshMy() {
         if (!sessionStore.read().isLoggedIn) {
             uiState = uiState.copy(
-                myState = buildFallbackMyState().copy(
+                myState = emptyMyState().copy(
                     authSession = AuthSession(),
                     isLoading = false,
                     errorMessage = null,
@@ -381,7 +377,7 @@ class AppViewModel(
                 if (isAuthFailure(error)) {
                     sessionStore.clear()
                     uiState = uiState.copy(
-                        myState = buildFallbackMyState().copy(
+                        myState = emptyMyState().copy(
                             authSession = AuthSession(),
                             isLoading = false,
                             authErrorMessage = "登录状态已失效，请重新登录。",
@@ -389,7 +385,8 @@ class AppViewModel(
                     )
                 } else {
                     uiState = uiState.copy(
-                        myState = buildFallbackMyState().copy(
+                        myState = emptyMyState().copy(
+                            authSession = sessionStore.read(),
                             isLoading = false,
                             errorMessage = "My page data unavailable: ${error.message}",
                         ),
@@ -406,35 +403,7 @@ class AppViewModel(
             message.contains("未登录")
     }
 
-    private fun buildFallbackState(): AppUiState {
-        val photos = fallbackRepository.getPhotos()
-        val categories = fallbackRepository.getCategoryCounts()
-        return AppUiState(
-            photos = photos,
-            categoryState = CategoryUiState(
-                airlines = categories.first,
-                models = categories.second,
-                airlineDirectory = fallbackRepository.getAirlineDirectory(),
-            ),
-            mapState = MapUiState(clusters = fallbackRepository.getMapClusters()),
-            uploadState = UploadUiState(config = fallbackRepository.getUploadConfig()),
-            myState = buildFallbackMyState(),
-        )
-    }
-
-    private fun buildFallbackMyState(): MyUiState {
-        val summary = fallbackRepository.getMySummary()
-        return MyUiState(
-            authSession = sessionStore.read(),
-            user = summary.first,
-            summary = summary.second,
-            works = fallbackRepository.getPhotos(),
-            likedPhotos = fallbackRepository.getMyLikes(),
-            pending = fallbackRepository.getReviewItems("pending"),
-            rejected = fallbackRepository.getReviewItems("rejected"),
-            sessions = fallbackRepository.getDeviceSessions(),
-        )
-    }
+    private fun emptyMyState(): MyUiState = MyUiState(authSession = sessionStore.read())
 
     private fun openMyWorks(repository: SyPhotosRepository): List<PhotoItem> {
         return repository.getReviewItems("all").map { it.photo }
@@ -456,7 +425,6 @@ data class AppUiState(
 data class FeedUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val usingFallbackData: Boolean = false,
 )
 
 data class CategoryUiState(

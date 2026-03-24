@@ -24,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import cn.syphotos.android.ui.components.GradientHero
 import cn.syphotos.android.ui.i18n.AppLanguage
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.MyUiState
@@ -45,14 +44,6 @@ fun MyScreen(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            GradientHero(
-                eyebrow = strings.navMy,
-                title = strings.myTitle,
-                subtitle = strings.mySubtitle,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            )
-        }
         item {
             SectionCard(strings.account) {
                 if (!state.authSession.isLoggedIn) {

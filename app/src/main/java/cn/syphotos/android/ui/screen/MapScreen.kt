@@ -52,26 +52,12 @@ fun MapScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(strings.mapTitle, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    Text(
-                        strings.mapSubtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            item {
                 AirportScatterMap(
                     clusters = clusters.take(80),
                     onApplyMapSelection = onApplyMapSelection,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
                         .height(260.dp),
                 )
             }
