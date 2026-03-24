@@ -6,6 +6,7 @@ import cn.syphotos.android.model.CategoryCount
 import cn.syphotos.android.model.MapCluster
 import cn.syphotos.android.model.MySummaryStats
 import cn.syphotos.android.model.AuthSession
+import cn.syphotos.android.model.AirlineDirectoryItem
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoItem
@@ -115,6 +116,24 @@ class WebSyPhotosRepository(
         return getCategoryCounts(photos)
     }
 
+    override fun getAirlineDirectory(): List<AirlineDirectoryItem> {
+        val items = openJsonArray(apiUri("categories/airlines.php").toString())
+        return buildList(items.length()) {
+            for (index in 0 until items.length()) {
+                val item = items.getJSONObject(index)
+                add(
+                    AirlineDirectoryItem(
+                        label = item.optString("label"),
+                        aircraftCount = item.optInt("aircraft_count", 0),
+                        photoCount = item.optInt("photo_count", 0),
+                        href = normalizeUrl(item.optString("href")),
+                        photoStatus = item.optString("photo_status"),
+                    ),
+                )
+            }
+        }
+    }
+
     fun getCategoryCounts(photos: List<PhotoItem>): Pair<List<CategoryCount>, List<CategoryCount>> {
         return Pair(
             photos.groupingBy { it.airline }.eachCount().entries
@@ -156,7 +175,7 @@ class WebSyPhotosRepository(
 
     override fun getMapClusters(filter: PhotoFilter): List<MapCluster> {
         val uri = apiUri("map/clusters.php").buildUpon().apply {
-            appendQueryParameter("level", "country")
+            appendQueryParameter("level", "airport")
             appendIfNotBlank("iatacode", filter.locationCode.uppercase())
             appendIfNotBlank("keyword", mergeKeyword(filter.keyword, filter.author))
             appendIfNotBlank("airline", filter.airline)
@@ -304,7 +323,10 @@ class WebSyPhotosRepository(
             readTimeout = 8_000
             setRequestProperty("Accept", "application/json")
             if (requiresAuth) {
-                val token = sessionStore.read().accessToken
+                var token = sessionStore.read().accessToken
+                if (token.isBlank() && retryAfterRefresh && refreshSession()) {
+                    token = sessionStore.read().accessToken
+                }
                 if (token.isBlank()) {
                     throw IllegalStateException("Missing access token")
                 }
@@ -324,7 +346,7 @@ class WebSyPhotosRepository(
                 return@useResponse openJson(url, method, requiresAuth, formBody, retryAfterRefresh = false)
             }
             if (statusCode !in 200..299) {
-                throw IllegalStateException("HTTP $statusCode from $url")
+                throw IllegalStateException(extractErrorMessage(body) ?: "HTTP $statusCode from $url")
             }
             val json = JSONObject(body)
             if (json.has("success") && !json.optBoolean("success", false)) {
@@ -430,6 +452,16 @@ class WebSyPhotosRepository(
         return entries.joinToString("&") { (key, value) ->
             "${Uri.encode(key)}=${Uri.encode(value)}"
         }
+    }
+
+    private fun extractErrorMessage(body: String): String? {
+        if (body.isBlank()) return null
+        return runCatching {
+            val json = JSONObject(body)
+            json.optString("error")
+                .ifBlank { json.optString("message") }
+                .ifBlank { null }
+        }.getOrNull()
     }
 
     private fun refreshSession(): Boolean {

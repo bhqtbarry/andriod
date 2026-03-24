@@ -4,6 +4,7 @@ import cn.syphotos.android.model.CategoryCount
 import cn.syphotos.android.model.DeviceSession
 import cn.syphotos.android.model.MapCluster
 import cn.syphotos.android.model.AuthSession
+import cn.syphotos.android.model.AirlineDirectoryItem
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoItem
@@ -90,6 +91,14 @@ class FakeSyPhotosRepository : SyPhotosRepository {
                 CategoryCount("Airbus A320", 27),
                 CategoryCount("ATR 72-600", 13),
             ),
+        )
+    }
+
+    override fun getAirlineDirectory(): List<AirlineDirectoryItem> {
+        return listOf(
+            AirlineDirectoryItem("Garuda Indonesia", 42, 42, "photolist.php?airline=Garuda+Indonesia", "has-photos"),
+            AirlineDirectoryItem("Lion Air", 30, 30, "photolist.php?airline=Lion+Air", "has-photos"),
+            AirlineDirectoryItem("Batik Air", 16, 16, "photolist.php?airline=Batik+Air", "has-photos"),
         )
     }
 

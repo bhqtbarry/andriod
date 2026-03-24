@@ -47,6 +47,14 @@ data class CategoryCount(
     val count: Int,
 )
 
+data class AirlineDirectoryItem(
+    val label: String,
+    val aircraftCount: Int,
+    val photoCount: Int,
+    val href: String,
+    val photoStatus: String,
+)
+
 data class MapCluster(
     val id: String,
     val name: String,

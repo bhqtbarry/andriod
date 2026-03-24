@@ -50,7 +50,6 @@ fun AppNavHost(
         composable(AppDestination.Map.route) {
             MapScreen(
                 state = viewModel.uiState,
-                onFilterChange = viewModel::updateFilter,
                 onApplyMapSelection = {
                     viewModel.updateFilter(viewModel.uiState.photoFilter.copy(locationCode = it))
                     navController.navigate(AppDestination.AllPhotos.route)
@@ -66,7 +65,13 @@ fun AppNavHost(
             )
         }
         composable(AppDestination.Category.route) {
-            CategoryScreen(state = viewModel.uiState.categoryState)
+            CategoryScreen(
+                state = viewModel.uiState.categoryState,
+                onSelectAirline = { airline ->
+                    viewModel.updateFilter(viewModel.uiState.photoFilter.copy(airline = airline))
+                    navController.navigate(AppDestination.AllPhotos.route)
+                },
+            )
         }
         composable(AppDestination.My.route) {
             MyScreen(
