@@ -7,6 +7,7 @@ import cn.syphotos.android.model.MapCluster
 import cn.syphotos.android.model.MySummaryStats
 import cn.syphotos.android.model.AuthSession
 import cn.syphotos.android.model.AirlineDirectoryItem
+import cn.syphotos.android.model.AirlineTreeItem
 import cn.syphotos.android.model.PagedResult
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoDetail
@@ -144,6 +145,63 @@ class WebSyPhotosRepository(
                         aircraftCount = item.optInt("aircraft_count", 0),
                         photoCount = item.optInt("photo_count", 0),
                         href = normalizeUrl(item.optString("href")),
+                        photoStatus = item.optString("photo_status"),
+                    ),
+                )
+            }
+        }
+    }
+
+    override fun getAirlineTypecodes(airline: String): List<AirlineTreeItem> {
+        val root = openJson(
+            webUri("airline.php").buildUpon()
+                .appendQueryParameter("action", "children")
+                .appendQueryParameter("level", "airline")
+                .appendQueryParameter("airline", airline)
+                .build()
+                .toString(),
+        )
+        val items = root.optJSONArray("items") ?: JSONArray()
+        return buildList(items.length()) {
+            for (index in 0 until items.length()) {
+                val item = items.getJSONObject(index)
+                add(
+                    AirlineTreeItem(
+                        label = item.optString("label"),
+                        aircraftCount = item.optInt("aircraft_count", 0),
+                        photoCount = item.optInt("photo_count", 0),
+                        level = item.optString("level").ifBlank { "typecode" },
+                        airline = item.optString("airline").ifBlank { airline },
+                        typecode = item.optString("label"),
+                        photoStatus = item.optString("photo_status"),
+                    ),
+                )
+            }
+        }
+    }
+
+    override fun getAirlineRegistrations(airline: String, typecode: String): List<AirlineTreeItem> {
+        val root = openJson(
+            webUri("airline.php").buildUpon()
+                .appendQueryParameter("action", "children")
+                .appendQueryParameter("level", "typecode")
+                .appendQueryParameter("airline", airline)
+                .appendQueryParameter("typecode", typecode)
+                .build()
+                .toString(),
+        )
+        val items = root.optJSONArray("items") ?: JSONArray()
+        return buildList(items.length()) {
+            for (index in 0 until items.length()) {
+                val item = items.getJSONObject(index)
+                add(
+                    AirlineTreeItem(
+                        label = item.optString("label"),
+                        photoCount = item.optInt("photo_count", 0),
+                        level = item.optString("level").ifBlank { "registration" },
+                        airline = airline,
+                        typecode = typecode,
+                        registration = item.optString("registration").ifBlank { item.optString("label") },
                         photoStatus = item.optString("photo_status"),
                     ),
                 )

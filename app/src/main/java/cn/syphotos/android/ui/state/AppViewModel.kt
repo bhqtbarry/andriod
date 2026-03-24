@@ -12,6 +12,7 @@ import cn.syphotos.android.data.SyPhotosRepository
 import cn.syphotos.android.data.WebSyPhotosRepository
 import cn.syphotos.android.model.AuthSession
 import cn.syphotos.android.model.AirlineDirectoryItem
+import cn.syphotos.android.model.AirlineTreeItem
 import cn.syphotos.android.model.CategoryCount
 import cn.syphotos.android.model.DeviceSession
 import cn.syphotos.android.model.MapCluster
@@ -122,7 +123,7 @@ class AppViewModel(
         val existingPhoto = findPhoto(photoId)
         uiState = uiState.copy(
             viewerState = uiState.viewerState.copy(
-                detail = uiState.viewerState.detail ?: existingPhoto?.let { PhotoDetail(photo = it) },
+                detail = existingPhoto?.let { PhotoDetail(photo = it) },
                 isLoading = true,
                 errorMessage = null,
             ),
@@ -281,6 +282,10 @@ class AppViewModel(
                                 "shooting_location" to uploadState.shootingLocation.uppercase(),
                                 "cameraModel" to uploadState.cameraModel,
                                 "lensModel" to uploadState.lensModel,
+                                "FocalLength" to uploadState.focalLength,
+                                "ISO" to uploadState.iso,
+                                "F" to uploadState.aperture,
+                                "Shutter" to uploadState.shutter,
                                 "watermark_size" to uploadState.watermarkSize.toString(),
                                 "watermark_opacity" to uploadState.watermarkOpacity.toString(),
                                 "watermark_position" to uploadState.watermarkPosition,
@@ -397,6 +402,35 @@ class AppViewModel(
             }.getOrElse { emptyList() }
             uiState = uiState.copy(
                 categoryState = uiState.categoryState.copy(airlineDirectory = airlineDirectory),
+            )
+        }
+    }
+
+    fun loadAirlineTypecodes(airline: String) {
+        if (uiState.categoryState.typecodesByAirline.containsKey(airline)) return
+        viewModelScope.launch {
+            val items = runCatching {
+                withContext(Dispatchers.IO) { webRepository.getAirlineTypecodes(airline) }
+            }.getOrElse { emptyList() }
+            uiState = uiState.copy(
+                categoryState = uiState.categoryState.copy(
+                    typecodesByAirline = uiState.categoryState.typecodesByAirline + (airline to items),
+                ),
+            )
+        }
+    }
+
+    fun loadAirlineRegistrations(airline: String, typecode: String) {
+        val key = "$airline|$typecode"
+        if (uiState.categoryState.registrationsByType.containsKey(key)) return
+        viewModelScope.launch {
+            val items = runCatching {
+                withContext(Dispatchers.IO) { webRepository.getAirlineRegistrations(airline, typecode) }
+            }.getOrElse { emptyList() }
+            uiState = uiState.copy(
+                categoryState = uiState.categoryState.copy(
+                    registrationsByType = uiState.categoryState.registrationsByType + (key to items),
+                ),
             )
         }
     }
@@ -519,6 +553,10 @@ class AppViewModel(
                         exifMessage = "已读取 EXIF 信息。",
                         cameraModel = current.cameraModel.ifBlank { exif.cameraModel },
                         lensModel = current.lensModel.ifBlank { exif.lensModel },
+                        focalLength = current.focalLength.ifBlank { exif.focalLength },
+                        iso = current.iso.ifBlank { exif.iso },
+                        aperture = current.aperture.ifBlank { exif.aperture },
+                        shutter = current.shutter.ifBlank { exif.shutterSpeed },
                         shootingLocation = current.shootingLocation.ifBlank { exif.nearestAirport.uppercase() },
                         shootingTime = current.shootingTime.ifBlank { formatExifDateTime(exif.dateTimeOriginal) },
                     ),
@@ -574,6 +612,8 @@ data class CategoryUiState(
     val airlines: List<CategoryCount> = emptyList(),
     val models: List<CategoryCount> = emptyList(),
     val airlineDirectory: List<AirlineDirectoryItem> = emptyList(),
+    val typecodesByAirline: Map<String, List<AirlineTreeItem>> = emptyMap(),
+    val registrationsByType: Map<String, List<AirlineTreeItem>> = emptyMap(),
 )
 
 data class MapUiState(
@@ -593,6 +633,10 @@ data class UploadUiState(
     val shootingLocation: String = "",
     val cameraModel: String = "",
     val lensModel: String = "",
+    val focalLength: String = "",
+    val iso: String = "",
+    val aperture: String = "",
+    val shutter: String = "",
     val watermarkSize: Int = 15,
     val watermarkOpacity: Int = 80,
     val watermarkPosition: String = "bottom-right",

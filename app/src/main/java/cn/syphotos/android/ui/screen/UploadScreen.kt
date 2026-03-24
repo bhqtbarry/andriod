@@ -136,6 +136,34 @@ fun UploadScreen(
                             modifier = Modifier.weight(1f),
                         )
                     }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        FormTextField(
+                            value = state.focalLength,
+                            label = "Focal Length",
+                            onValueChange = { value -> onDraftChange { current -> current.copy(focalLength = value) } },
+                            modifier = Modifier.weight(1f),
+                        )
+                        FormTextField(
+                            value = state.iso,
+                            label = "ISO",
+                            onValueChange = { value -> onDraftChange { current -> current.copy(iso = value) } },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        FormTextField(
+                            value = state.aperture,
+                            label = "Aperture",
+                            onValueChange = { value -> onDraftChange { current -> current.copy(aperture = value) } },
+                            modifier = Modifier.weight(1f),
+                        )
+                        FormTextField(
+                            value = state.shutter,
+                            label = "Shutter",
+                            onValueChange = { value -> onDraftChange { current -> current.copy(shutter = value) } },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                     if (state.exifMessage != null || state.exifInfo != UploadExifInfo()) {
                         Surface(
                             color = MaterialTheme.colorScheme.secondaryContainer,

@@ -73,6 +73,16 @@ fun AppNavHost(
                     viewModel.updateFilter(viewModel.uiState.photoFilter.copy(airline = airline))
                     navController.navigate(AppDestination.AllPhotos.route)
                 },
+                onSelectTypecode = { airline, typecode ->
+                    viewModel.updateFilter(viewModel.uiState.photoFilter.copy(airline = airline, aircraftModel = typecode))
+                    navController.navigate(AppDestination.AllPhotos.route)
+                },
+                onSelectRegistration = { registration ->
+                    viewModel.updateFilter(viewModel.uiState.photoFilter.copy(registration = registration))
+                    navController.navigate(AppDestination.AllPhotos.route)
+                },
+                onExpandAirline = viewModel::loadAirlineTypecodes,
+                onExpandTypecode = viewModel::loadAirlineRegistrations,
             )
         }
         composable(AppDestination.My.route) {

@@ -58,6 +58,17 @@ data class AirlineDirectoryItem(
     val photoStatus: String,
 )
 
+data class AirlineTreeItem(
+    val label: String,
+    val aircraftCount: Int = 0,
+    val photoCount: Int = 0,
+    val level: String,
+    val airline: String = "",
+    val typecode: String = "",
+    val registration: String = "",
+    val photoStatus: String = "",
+)
+
 data class MapCluster(
     val id: String,
     val name: String,
