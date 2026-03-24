@@ -12,6 +12,7 @@ import cn.syphotos.android.data.SessionStore
 import cn.syphotos.android.data.SyPhotosRepository
 import cn.syphotos.android.data.WebSyPhotosRepository
 import cn.syphotos.android.model.AuthSession
+import cn.syphotos.android.model.AirlineDirectoryItem
 import cn.syphotos.android.model.CategoryCount
 import cn.syphotos.android.model.DeviceSession
 import cn.syphotos.android.model.MapCluster
@@ -269,6 +270,7 @@ class AppViewModel(
     private fun refreshAll() {
         refreshFeed(uiState.photoFilter)
         refreshMap(uiState.photoFilter)
+        refreshAirlineDirectory()
         refreshUpload()
         refreshMy()
     }
@@ -281,9 +283,7 @@ class AppViewModel(
         viewModelScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val photos = webRepository.getPhotos(filter)
-                    val categories = fallbackRepository.getCategoryCounts()
-                    Pair(photos, categories)
+                    Pair(webRepository.getPhotos(filter), webRepository.getCategoryCounts())
                 }
             }.onSuccess { (photos, categories) ->
                 uiState = uiState.copy(
@@ -307,6 +307,19 @@ class AppViewModel(
                     ),
                 )
             }
+        }
+    }
+
+    private fun refreshAirlineDirectory() {
+        viewModelScope.launch {
+            val airlineDirectory = runCatching {
+                withContext(Dispatchers.IO) { webRepository.getAirlineDirectory() }
+            }.getOrElse {
+                fallbackRepository.getAirlineDirectory()
+            }
+            uiState = uiState.copy(
+                categoryState = uiState.categoryState.copy(airlineDirectory = airlineDirectory),
+            )
         }
     }
 
@@ -365,14 +378,32 @@ class AppViewModel(
             }.onSuccess { remoteState ->
                 uiState = uiState.copy(myState = remoteState.copy(isLoading = false))
             }.onFailure { error ->
-                uiState = uiState.copy(
-                    myState = buildFallbackMyState().copy(
-                        isLoading = false,
-                        errorMessage = "My page data unavailable: ${error.message}",
-                    ),
-                )
+                if (isAuthFailure(error)) {
+                    sessionStore.clear()
+                    uiState = uiState.copy(
+                        myState = buildFallbackMyState().copy(
+                            authSession = AuthSession(),
+                            isLoading = false,
+                            authErrorMessage = "登录状态已失效，请重新登录。",
+                        ),
+                    )
+                } else {
+                    uiState = uiState.copy(
+                        myState = buildFallbackMyState().copy(
+                            isLoading = false,
+                            errorMessage = "My page data unavailable: ${error.message}",
+                        ),
+                    )
+                }
             }
         }
+    }
+
+    private fun isAuthFailure(error: Throwable): Boolean {
+        val message = error.message.orEmpty()
+        return message.contains("401") ||
+            message.contains("Missing access token", ignoreCase = true) ||
+            message.contains("未登录")
     }
 
     private fun buildFallbackState(): AppUiState {
@@ -383,6 +414,7 @@ class AppViewModel(
             categoryState = CategoryUiState(
                 airlines = categories.first,
                 models = categories.second,
+                airlineDirectory = fallbackRepository.getAirlineDirectory(),
             ),
             mapState = MapUiState(clusters = fallbackRepository.getMapClusters()),
             uploadState = UploadUiState(config = fallbackRepository.getUploadConfig()),
@@ -430,6 +462,7 @@ data class FeedUiState(
 data class CategoryUiState(
     val airlines: List<CategoryCount> = emptyList(),
     val models: List<CategoryCount> = emptyList(),
+    val airlineDirectory: List<AirlineDirectoryItem> = emptyList(),
 )
 
 data class MapUiState(

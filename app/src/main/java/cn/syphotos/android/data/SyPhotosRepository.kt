@@ -4,6 +4,7 @@ import cn.syphotos.android.model.CategoryCount
 import cn.syphotos.android.model.DeviceSession
 import cn.syphotos.android.model.MapCluster
 import cn.syphotos.android.model.AuthSession
+import cn.syphotos.android.model.AirlineDirectoryItem
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoItem
@@ -25,6 +26,8 @@ interface SyPhotosRepository {
     fun getPhotoDetail(photoId: Long): PhotoDetail
 
     fun getCategoryCounts(): Pair<List<CategoryCount>, List<CategoryCount>>
+
+    fun getAirlineDirectory(): List<AirlineDirectoryItem>
 
     fun getSuggestions(field: String, query: String, filter: PhotoFilter = PhotoFilter()): List<SearchSuggestion>
 
