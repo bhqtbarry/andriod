@@ -528,7 +528,7 @@ class WebSyPhotosRepository(
             if (cookieHeader.isNotBlank()) {
                 setRequestProperty("Cookie", cookieHeader)
             }
-            chunkedStreamingMode = 0
+            setChunkedStreamingMode(0)
         }
 
         connection.outputStream.use { output ->

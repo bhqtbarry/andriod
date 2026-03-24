@@ -65,6 +65,7 @@ class AppStrings(
     val uploadPositionBottomRight get() = text("upload_position_bottom_right")
     val uploadTermsTitle get() = text("upload_terms_title")
     val uploadTermsDesc get() = text("upload_terms_desc")
+    val uploadSubmit get() = text("upload_submit")
     val chooseImage get() = text("choose_image")
     val exifEnabled get() = text("exif_enabled")
     val watermarkEnabled get() = text("watermark_enabled")
@@ -195,6 +196,7 @@ class AppStrings(
             "upload_position_bottom_right" to "Bottom right",
             "upload_terms_title" to "Terms",
             "upload_terms_desc" to "I confirm I own the image and allow the platform to use it according to the site rules.",
+            "upload_submit" to "Submit Upload",
             "choose_image" to "Choose Image",
             "exif_enabled" to "EXIF auto extraction is enabled",
             "watermark_enabled" to "Website watermark rules will be reused",
@@ -288,6 +290,7 @@ class AppStrings(
                 "upload_position_bottom_right" to "右下",
                 "upload_terms_title" to "使用条款",
                 "upload_terms_desc" to "我确认拥有图片权利，并同意按网站规则授权平台使用。",
+                "upload_submit" to "提交上传",
                 "choose_image" to "选择图片",
                 "exif_enabled" to "已启用 EXIF 自动提取",
                 "watermark_enabled" to "将沿用网站水印规则",
