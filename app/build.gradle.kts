@@ -72,9 +72,12 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.9")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation("androidx.viewpager2:viewpager2:1.1.0")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.baidu.lbsyun:BaiduMapSDK_Map:7.5.4")
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    implementation("com.github.chrisbanes:PhotoView:2.3.0")
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")
 

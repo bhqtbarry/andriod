@@ -31,15 +31,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import cn.syphotos.android.model.PhotoItem
+import cn.syphotos.android.ui.common.GlideThumbnailImage
 import cn.syphotos.android.ui.i18n.AppLanguage
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.MyUiState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import coil3.compose.AsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -205,14 +204,13 @@ fun MyScreen(
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
                                 if (photo.thumbUrl.isNotBlank()) {
-                                    AsyncImage(
-                                        model = photo.thumbUrl,
+                                    GlideThumbnailImage(
+                                        url = photo.thumbUrl,
                                         contentDescription = photo.title,
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(180.dp)
                                             .clickable { onOpenPhoto(photo.id) },
-                                        contentScale = ContentScale.Crop,
                                     )
                                 }
                                 Text(photo.title, style = MaterialTheme.typography.titleMedium)

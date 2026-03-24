@@ -43,15 +43,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.SearchSuggestion
+import cn.syphotos.android.ui.common.GlideThumbnailImage
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.AppUiState
-import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 
 @Composable
@@ -406,11 +405,10 @@ private fun PhotoCard(
             .clickable { onOpenPhoto(photo.id) },
     ) {
         if (photo.thumbUrl.isNotBlank()) {
-            AsyncImage(
-                model = photo.thumbUrl,
+            GlideThumbnailImage(
+                url = photo.thumbUrl,
                 contentDescription = photo.title,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
             )
         } else {
             Box(
