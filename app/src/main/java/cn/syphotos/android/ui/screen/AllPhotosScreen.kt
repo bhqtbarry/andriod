@@ -86,7 +86,7 @@ fun AllPhotosScreen(
                         modifier = Modifier.padding(vertical = 8.dp),
                     ) {
                         Text(
-                            text = if (state.feedState.usingFallbackData) "$message\nShowing local fallback data." else message,
+                            text = message,
                             modifier = Modifier.padding(12.dp),
                             color = MaterialTheme.colorScheme.onErrorContainer,
                         )

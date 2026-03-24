@@ -90,7 +90,7 @@ fun AppNavHost(
             val photoId = backStackEntry.arguments?.getLong("photoId") ?: selectedPhotoId ?: return@composable
             PhotoViewerScreen(
                 state = viewModel.uiState.viewerState,
-                fallbackPhotoTitle = viewModel.findPhoto(photoId).title,
+                fallbackPhotoTitle = viewModel.findPhoto(photoId)?.title.orEmpty(),
                 onToggleLike = { viewModel.toggleLike(photoId) },
                 onApplyFilter = { filter ->
                     viewModel.updateFilter(filter)

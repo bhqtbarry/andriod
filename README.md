@@ -13,7 +13,7 @@ Environment requirements:
 - JDK 17
 
 Next integration step:
-- Replace `FakeSyPhotosRepository` with `/api/app/v1/...` backend services
+- App now reads directly from `/api/app/v1/...` services and does not fall back to local fake photo data
 
 Current web service integration:
 - Default `BASE_URL` is `https://www.syphotos.cn/api/app/v1/`

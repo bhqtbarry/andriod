@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import cn.syphotos.android.ui.components.GradientHero
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.UploadUiState
 import coil3.compose.AsyncImage
@@ -67,13 +66,6 @@ fun UploadScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            GradientHero(
-                eyebrow = strings.navUpload,
-                title = strings.uploadTitle,
-                subtitle = strings.uploadSubtitle,
-            )
-        }
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
