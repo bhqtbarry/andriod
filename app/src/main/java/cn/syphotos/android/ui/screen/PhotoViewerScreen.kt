@@ -180,7 +180,6 @@ fun PhotoViewerScreen(
                         AsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(pageImageUrl)
-                                .crossfade(true)
                                 .build(),
                             contentDescription = item?.title ?: fallbackPhotoTitle,
                             modifier = Modifier
