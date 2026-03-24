@@ -88,8 +88,9 @@ fun PhotoViewerScreen(
                 modifier = Modifier.fillMaxSize(),
             ) { page ->
                 val item = gallery.getOrNull(page)
-                val pageImageUrl = if (state.detail?.photo?.id == item?.id) {
-                    state.detail.originalUrl.ifBlank { item?.originalUrl }.orEmpty()
+                val matchedDetail = state.detail?.takeIf { it.photo.id == item?.id }
+                val pageImageUrl = if (matchedDetail != null) {
+                    matchedDetail.originalUrl.ifBlank { item?.originalUrl }.orEmpty()
                 } else {
                     item?.originalUrl.orEmpty()
                 }
