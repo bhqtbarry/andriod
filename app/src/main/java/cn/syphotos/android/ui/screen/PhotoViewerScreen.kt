@@ -86,6 +86,7 @@ fun PhotoViewerScreen(
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
+                userScrollEnabled = scale == 1f,
             ) { page ->
                 val item = gallery.getOrNull(page)
                 val matchedDetail = state.detail?.takeIf { it.photo.id == item?.id }
@@ -97,17 +98,19 @@ fun PhotoViewerScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(pageImageUrl) {
-                            detectTransformGestures { _, pan, zoom, _ ->
-                                val newScale = (scale * zoom).coerceIn(1f, 4f)
-                                if (newScale == 1f) {
-                                    scale = 1f
-                                    offsetX = 0f
-                                    offsetY = 0f
-                                } else {
-                                    scale = newScale
-                                    offsetX += pan.x
-                                    offsetY += pan.y
+                        .pointerInput(pageImageUrl, scale) {
+                            if (scale > 1f) {
+                                detectTransformGestures { _, pan, zoom, _ ->
+                                    val newScale = (scale * zoom).coerceIn(1f, 4f)
+                                    if (newScale == 1f) {
+                                        scale = 1f
+                                        offsetX = 0f
+                                        offsetY = 0f
+                                    } else {
+                                        scale = newScale
+                                        offsetX += pan.x
+                                        offsetY += pan.y
+                                    }
                                 }
                             }
                         }

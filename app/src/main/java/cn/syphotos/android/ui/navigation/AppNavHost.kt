@@ -92,6 +92,7 @@ fun AppNavHost(
                 onLanguageSelected = onLanguageSelected,
                 onLogin = viewModel::login,
                 onLogout = viewModel::logout,
+                onRefresh = viewModel::refreshMyPage,
                 onOpenPhoto = { photoId ->
                     viewModel.openPhotoGallery(photoId, viewModel.uiState.myState.works)
                     onOpenPhoto(photoId)

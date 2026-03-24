@@ -188,7 +188,11 @@ private fun RegistrationRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(item.registration.ifBlank { item.label }, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                item.registration.ifBlank { item.label },
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f),
+            )
             Text(
                 "${item.photoCount} 张",
                 style = MaterialTheme.typography.labelLarge,

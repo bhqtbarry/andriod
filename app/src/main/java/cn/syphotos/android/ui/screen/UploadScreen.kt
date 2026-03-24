@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import cn.syphotos.android.model.UploadExifInfo
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.UploadUiState
 import coil3.compose.AsyncImage
@@ -164,7 +163,7 @@ fun UploadScreen(
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    if (state.exifMessage != null || state.exifInfo != UploadExifInfo()) {
+                    state.exifMessage?.let { exifMessage ->
                         Surface(
                             color = MaterialTheme.colorScheme.secondaryContainer,
                             shape = RoundedCornerShape(18.dp),
@@ -173,18 +172,7 @@ fun UploadScreen(
                                 modifier = Modifier.padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                Text("EXIF", style = MaterialTheme.typography.titleSmall)
-                                state.exifMessage?.let {
-                                    Text(it, style = MaterialTheme.typography.bodySmall)
-                                }
-                                ExifValue("Camera", state.exifInfo.cameraModel)
-                                ExifValue("Lens", state.exifInfo.lensModel)
-                                ExifValue("Focal", state.exifInfo.focalLength)
-                                ExifValue("ISO", state.exifInfo.iso)
-                                ExifValue("Aperture", state.exifInfo.aperture)
-                                ExifValue("Shutter", state.exifInfo.shutterSpeed)
-                                ExifValue("Airport", state.exifInfo.nearestAirport)
-                                ExifValue("Taken", state.exifInfo.dateTimeOriginal)
+                                Text(exifMessage, style = MaterialTheme.typography.bodySmall)
                             }
                         }
                     }
@@ -370,13 +358,4 @@ private fun MessageCard(
             color = if (error) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
         )
     }
-}
-
-@Composable
-private fun ExifValue(
-    label: String,
-    value: String,
-) {
-    if (value.isBlank()) return
-    Text("$label: $value", style = MaterialTheme.typography.bodySmall)
 }

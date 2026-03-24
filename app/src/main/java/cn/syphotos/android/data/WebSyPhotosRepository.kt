@@ -364,32 +364,19 @@ class WebSyPhotosRepository(
         mimeType: String,
         fields: Map<String, String>,
     ): String {
-        val html = openText(webUri("upload.php").toString())
-        val csrf = Regex("""name=["']csrf_token["']\s+value=["']([^"']+)["']""")
-            .find(html)
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.trim()
-            .orEmpty()
-        if (csrf.isBlank()) {
-            throw IllegalStateException("Upload page session unavailable. Please sign in again.")
-        }
-
-        val response = submitMultipart(
-            url = webUri("upload.php").toString(),
-            fields = linkedMapOf<String, String>().apply {
-                put("csrf_token", csrf)
-                putAll(fields)
-            },
+        val response = submitMultipartJson(
+            url = apiUri("photos/upload.php").toString(),
+            fields = fields,
             fileField = "photo",
             file = file,
             originalName = originalName,
             mimeType = mimeType,
+            requiresAuth = true,
         )
-
-        parseAlertMessage(response, "alert-success")?.let { return it }
-        parseAlertMessage(response, "alert-error")?.let { throw IllegalStateException(it) }
-        throw IllegalStateException("Upload failed. The server did not return a success message.")
+        if (response.has("success") && !response.optBoolean("success", false)) {
+            throw IllegalStateException(response.optString("error", "Upload failed"))
+        }
+        return response.optString("message").ifBlank { "图片上传成功，等待审核" }
     }
 
     override fun getMySummary(): Pair<UserSummary, MySummaryStats> {
@@ -663,44 +650,32 @@ class WebSyPhotosRepository(
         }.isSuccess
     }
 
-    private fun openText(url: String): String {
-        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 8_000
-            readTimeout = 8_000
-            setRequestProperty("Accept", "text/html,application/xhtml+xml")
-            val cookieHeader = sessionStore.readCookieHeader()
-            if (cookieHeader.isNotBlank()) {
-                setRequestProperty("Cookie", cookieHeader)
-            }
-        }
-        return connection.useResponse { statusCode, body, _ ->
-            if (statusCode !in 200..299) {
-                throw IllegalStateException("HTTP $statusCode from $url")
-            }
-            body
-        }
-    }
-
-    private fun submitMultipart(
+    private fun submitMultipartJson(
         url: String,
         fields: Map<String, String>,
         fileField: String,
         file: File,
         originalName: String,
         mimeType: String,
-    ): String {
+        requiresAuth: Boolean = false,
+    ): JSONObject {
         val boundary = "----SyPhotosBoundary${System.currentTimeMillis()}"
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 15_000
             readTimeout = 30_000
             doOutput = true
-            setRequestProperty("Accept", "text/html,application/xhtml+xml")
+            setRequestProperty("Accept", "application/json")
             setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
-            val cookieHeader = sessionStore.readCookieHeader()
-            if (cookieHeader.isNotBlank()) {
-                setRequestProperty("Cookie", cookieHeader)
+            if (requiresAuth) {
+                var token = sessionStore.read().accessToken
+                if (token.isBlank() && refreshSession()) {
+                    token = sessionStore.read().accessToken
+                }
+                if (token.isBlank()) {
+                    throw IllegalStateException("Missing access token")
+                }
+                setRequestProperty("Authorization", "Bearer $token")
             }
             setChunkedStreamingMode(0)
         }
@@ -726,27 +701,10 @@ class WebSyPhotosRepository(
 
         return connection.useResponse { statusCode, body, _ ->
             if (statusCode !in 200..299) {
-                throw IllegalStateException("HTTP $statusCode from $url")
+                throw IllegalStateException(extractErrorMessage(body) ?: "HTTP $statusCode from $url")
             }
-            body
+            JSONObject(body)
         }
-    }
-
-    private fun parseAlertMessage(html: String, className: String): String? {
-        val raw = Regex("""<div[^>]*class=["'][^"']*\b$className\b[^"']*["'][^>]*>([\s\S]*?)</div>""")
-            .find(html)
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.trim()
-            ?: return null
-        return raw
-            .replace(Regex("<[^>]+>"), " ")
-            .replace("&nbsp;", " ")
-            .replace("&amp;", "&")
-            .replace("&quot;", "\"")
-            .replace("&#039;", "'")
-            .replace(Regex("\\s+"), " ")
-            .trim()
     }
 
     private inline fun <T> HttpURLConnection.useResponse(block: (Int, String, Map<String, List<String>>) -> T): T {

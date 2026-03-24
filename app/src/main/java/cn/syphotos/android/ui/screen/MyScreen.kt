@@ -1,6 +1,7 @@
 package cn.syphotos.android.ui.screen
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -45,6 +48,7 @@ fun MyScreen(
     onLanguageSelected: (AppLanguage) -> Unit,
     onLogin: (String, String) -> Unit,
     onLogout: () -> Unit,
+    onRefresh: () -> Unit,
     onOpenPhoto: (Long) -> Unit,
     onDeletePhoto: (PhotoItem) -> Unit,
 ) {
@@ -71,7 +75,29 @@ fun MyScreen(
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    var dragDistance by remember { mutableStateOf(0f) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(selectedTab, state.isLoading) {
+                detectVerticalDragGestures(
+                    onVerticalDrag = { _, dragAmount ->
+                        if (dragAmount > 0) {
+                            dragDistance += dragAmount
+                            if (dragDistance > 140f && !state.isLoading) {
+                                dragDistance = 0f
+                                onRefresh()
+                            }
+                        } else {
+                            dragDistance = 0f
+                        }
+                    },
+                    onDragEnd = { dragDistance = 0f },
+                    onDragCancel = { dragDistance = 0f },
+                )
+            },
+    ) {
         TabRow(selectedTabIndex = selectedTab) {
             Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("资料") })
             Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("作品管理") })
@@ -198,6 +224,18 @@ fun MyScreen(
                                 )
                             }
                             Text(photo.title, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                when (photo.status) {
+                                    "approved" -> "已批准"
+                                    "rejected" -> "已拒绝"
+                                    else -> "待审核"
+                                },
+                                color = when (photo.status) {
+                                    "approved" -> Color(0xFF2E8B57)
+                                    "rejected" -> Color(0xFFC95A5A)
+                                    else -> MaterialTheme.colorScheme.primary
+                                },
+                            )
                             Text(photo.airline.ifBlank { photo.aircraftModel })
                             Text(photo.registration.ifBlank { photo.createdAt }, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

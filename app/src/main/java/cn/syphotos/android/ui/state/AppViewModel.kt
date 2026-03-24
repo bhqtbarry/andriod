@@ -363,6 +363,10 @@ class AppViewModel(
         }
     }
 
+    fun refreshMyPage() {
+        refreshMy()
+    }
+
     private fun refreshAll() {
         refreshFeed(uiState.photoFilter, reset = true)
         refreshMap(uiState.photoFilter)
@@ -577,10 +581,11 @@ class AppViewModel(
                 }
             }.onSuccess { exif ->
                 val current = uiState.uploadState
+                val hasExif = hasExifData(exif)
                 uiState = uiState.copy(
                     uploadState = current.copy(
                         exifInfo = exif,
-                        exifMessage = "已读取 EXIF 信息。",
+                        exifMessage = if (hasExif) "EXIF 信息读取成功" else "图片无EXIF信息",
                         cameraModel = current.cameraModel.ifBlank { exif.cameraModel },
                         lensModel = current.lensModel.ifBlank { exif.lensModel },
                         focalLength = current.focalLength.ifBlank { exif.focalLength },
@@ -595,7 +600,7 @@ class AppViewModel(
                 uiState = uiState.copy(
                     uploadState = uiState.uploadState.copy(
                         exifInfo = UploadExifInfo(),
-                        exifMessage = "未能读取 EXIF 信息。",
+                        exifMessage = "图片无EXIF信息",
                     ),
                 )
             }
@@ -623,6 +628,17 @@ class AppViewModel(
             shutterSpeed = if (exposureTime.isNotBlank()) exposureTime else exif.getAttribute(ExifInterface.TAG_SHUTTER_SPEED_VALUE).orEmpty(),
             dateTimeOriginal = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL).orEmpty(),
         )
+    }
+
+    private fun hasExifData(exif: UploadExifInfo): Boolean {
+        return exif.cameraModel.isNotBlank() ||
+            exif.lensModel.isNotBlank() ||
+            exif.focalLength.isNotBlank() ||
+            exif.iso.isNotBlank() ||
+            exif.aperture.isNotBlank() ||
+            exif.shutterSpeed.isNotBlank() ||
+            exif.nearestAirport.isNotBlank() ||
+            exif.dateTimeOriginal.isNotBlank()
     }
 
     private fun emptyMyState(): MyUiState = MyUiState(authSession = sessionStore.read())
