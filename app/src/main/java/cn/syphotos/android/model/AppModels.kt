@@ -27,6 +27,9 @@ data class PhotoItem(
     val originalUrl: String = "",
     val detailUrl: String = "",
     val shareUrl: String = "",
+    val status: String = "",
+    val rejectionReason: String? = null,
+    val adminComment: String? = null,
 )
 
 data class PhotoDetail(
@@ -69,6 +72,14 @@ data class SearchSuggestion(
     val value: String,
     val label: String,
     val count: Int,
+)
+
+data class PagedResult<T>(
+    val items: List<T>,
+    val page: Int,
+    val perPage: Int,
+    val total: Int,
+    val hasMore: Boolean,
 )
 
 data class ReviewItem(
@@ -121,4 +132,15 @@ data class UploadConfig(
     val watermarkEnabled: Boolean = true,
     val registrationOcrEnabled: Boolean = true,
     val uploadUrl: String = "",
+)
+
+data class UploadExifInfo(
+    val cameraModel: String = "",
+    val lensModel: String = "",
+    val focalLength: String = "",
+    val iso: String = "",
+    val aperture: String = "",
+    val shutterSpeed: String = "",
+    val nearestAirport: String = "",
+    val dateTimeOriginal: String = "",
 )

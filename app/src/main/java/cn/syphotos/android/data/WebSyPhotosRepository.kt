@@ -7,12 +7,14 @@ import cn.syphotos.android.model.MapCluster
 import cn.syphotos.android.model.MySummaryStats
 import cn.syphotos.android.model.AuthSession
 import cn.syphotos.android.model.AirlineDirectoryItem
+import cn.syphotos.android.model.PagedResult
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ReviewItem
 import cn.syphotos.android.model.SearchSuggestion
 import cn.syphotos.android.model.UploadConfig
+import cn.syphotos.android.model.UploadExifInfo
 import cn.syphotos.android.model.DeviceSession
 import cn.syphotos.android.model.UserSummary
 import org.json.JSONArray
@@ -69,9 +71,13 @@ class WebSyPhotosRepository(
     }
 
     override fun getPhotos(filter: PhotoFilter): List<PhotoItem> {
+        return getPhotosPage(filter = filter).items
+    }
+
+    override fun getPhotosPage(filter: PhotoFilter, page: Int, perPage: Int): PagedResult<PhotoItem> {
         val uri = apiUri("photos/feed.php").buildUpon().apply {
-            appendQueryParameter("page", "1")
-            appendQueryParameter("per_page", "30")
+            appendQueryParameter("page", page.toString())
+            appendQueryParameter("per_page", perPage.toString())
             appendIfNotBlank("keyword", mergeKeyword(filter.keyword, filter.author))
             filter.author.toLongOrNull()?.let { appendQueryParameter("userid", it.toString()) }
             appendIfNotBlank("airline", filter.airline)
@@ -81,8 +87,19 @@ class WebSyPhotosRepository(
             appendIfNotBlank("registration_number", filter.registration.uppercase())
             appendIfNotBlank("iatacode", filter.locationCode.uppercase())
         }.build()
-
-        return openJsonArray(uri.toString()).toPhotoItems()
+        val root = openJson(uri.toString())
+        val items = when {
+            root.has("items") -> root.getJSONArray("items")
+            root.has("data") -> root.getJSONArray("data")
+            else -> JSONArray()
+        }
+        return PagedResult(
+            items = items.toPhotoItems(),
+            page = root.optInt("page", page),
+            perPage = root.optInt("per_page", perPage),
+            total = root.optInt("total", items.length()),
+            hasMore = root.optBoolean("has_more", false),
+        )
     }
 
     override fun getPhotoDetail(photoId: Long): PhotoDetail {
@@ -199,6 +216,88 @@ class WebSyPhotosRepository(
         )
     }
 
+    override fun lookupAircraftByRegistration(registration: String): Pair<String, String>? {
+        val root = openJson(
+            webUri("api/plane-info.php").buildUpon()
+                .appendQueryParameter("registration", registration.uppercase())
+                .build()
+                .toString(),
+        )
+        if (root.optString("status") != "success") {
+            return null
+        }
+        val data = root.optJSONObject("data") ?: return null
+        val model = data.optString("机型")
+        val airline = data.optString("运营机构")
+        if (model.isBlank() && airline.isBlank()) {
+            return null
+        }
+        return model to airline
+    }
+
+    override fun extractUploadExif(file: File, originalName: String, mimeType: String): UploadExifInfo {
+        val boundary = "----SyPhotosExif${System.currentTimeMillis()}"
+        val url = webUri("srv/exif-service/public/").toString()
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 15_000
+            readTimeout = 30_000
+            doOutput = true
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+            val cookieHeader = sessionStore.readCookieHeader()
+            if (cookieHeader.isNotBlank()) {
+                setRequestProperty("Cookie", cookieHeader)
+            }
+            setChunkedStreamingMode(0)
+        }
+
+        connection.outputStream.use { output ->
+            val writer = BufferedWriter(OutputStreamWriter(output, Charsets.UTF_8))
+            writer.append("--").append(boundary).append("\r\n")
+            writer.append("""Content-Disposition: form-data; name="file"; filename="$originalName"""").append("\r\n")
+            writer.append("Content-Type: ").append(mimeType).append("\r\n\r\n")
+            writer.flush()
+            file.inputStream().use { input -> input.copyTo(output) }
+            output.write("\r\n".toByteArray())
+            writer.append("--").append(boundary).append("--").append("\r\n")
+            writer.flush()
+        }
+
+        return connection.useResponse { statusCode, body, _ ->
+            if (statusCode !in 200..299) {
+                throw IllegalStateException("HTTP $statusCode from $url")
+            }
+            val payloadObject = runCatching { JSONObject(body) }.getOrNull()
+            val payloadArray = if (payloadObject == null) runCatching { JSONArray(body) }.getOrNull() else null
+            if (payloadObject?.has("error") == true) {
+                throw IllegalStateException(payloadObject.optString("error"))
+            }
+            val data = if (payloadObject?.optJSONArray("data") != null) {
+                payloadObject.optJSONArray("data")?.optJSONObject(0)
+            } else if (payloadObject?.optJSONArray("items") != null) {
+                payloadObject.optJSONArray("items")?.optJSONObject(0)
+            } else {
+                payloadArray?.optJSONObject(0)
+            } ?: payloadObject ?: throw IllegalStateException("EXIF 服务返回格式无效")
+
+            if (data.optString("error").isNotBlank()) {
+                throw IllegalStateException(data.optString("error"))
+            }
+
+            UploadExifInfo(
+                cameraModel = data.optString("Model"),
+                lensModel = data.optString("LensID"),
+                focalLength = data.optString("FocalLength"),
+                iso = data.optString("ISO"),
+                aperture = data.optString("Aperture"),
+                shutterSpeed = data.optString("ShutterSpeed"),
+                nearestAirport = data.optString("NearestAirport"),
+                dateTimeOriginal = data.optString("DateTimeOriginal"),
+            )
+        }
+    }
+
     fun uploadPhoto(
         file: File,
         originalName: String,
@@ -260,12 +359,24 @@ class WebSyPhotosRepository(
                 .buildUpon()
                 .appendQueryParameter("status", status)
                 .appendQueryParameter("page", "1")
-                .appendQueryParameter("per_page", "30")
+                .appendQueryParameter("per_page", "100")
                 .build()
                 .toString(),
             requiresAuth = true,
         )
         return items.toReviewItems(status)
+    }
+
+    override fun deleteMyPhoto(photoId: Long, titleConfirm: String) {
+        openJson(
+            url = apiUri("photos/delete.php").toString(),
+            method = "POST",
+            requiresAuth = true,
+            formBody = mapOf(
+                "photo_id" to photoId.toString(),
+                "title_confirm" to titleConfirm,
+            ),
+        )
     }
 
     override fun getMyLikes(): List<PhotoItem> {
@@ -382,6 +493,9 @@ class WebSyPhotosRepository(
             originalUrl = normalizeUrl(optString("originalUrl").ifBlank { optString("original_url") }),
             detailUrl = normalizeUrl(optString("detailUrl").ifBlank { optString("detail_url") }),
             shareUrl = normalizeUrl(optString("shareUrl").ifBlank { optString("share_url") }),
+            status = optString("status"),
+            rejectionReason = optString("rejectionReason").ifBlank { optString("rejection_reason") }.blankToNull(),
+            adminComment = optString("adminComment").ifBlank { optString("admin_comment") }.blankToNull(),
         )
     }
 

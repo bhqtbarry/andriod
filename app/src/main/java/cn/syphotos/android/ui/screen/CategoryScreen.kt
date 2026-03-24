@@ -28,7 +28,19 @@ fun CategoryScreen(
     onSelectAirline: (String) -> Unit,
 ) {
     val strings = LocalAppStrings.current
-    val airlines = state.airlineDirectory.sortedWith(
+    val airlines = if (state.airlineDirectory.isNotEmpty()) {
+        state.airlineDirectory
+    } else {
+        state.airlines.map {
+            AirlineDirectoryItem(
+                label = it.name,
+                aircraftCount = 0,
+                photoCount = it.count,
+                href = "",
+                photoStatus = if (it.count > 0) "has-photos" else "no-photos",
+            )
+        }
+    }.sortedWith(
         compareByDescending<AirlineDirectoryItem> { it.photoCount }.thenBy { it.label.lowercase() },
     )
 
@@ -36,6 +48,15 @@ fun CategoryScreen(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        if (airlines.isEmpty()) {
+            item {
+                Text(
+                    text = "暂无航司数据",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         items(airlines, key = { it.label }) { item ->
             Card(
                 modifier = Modifier

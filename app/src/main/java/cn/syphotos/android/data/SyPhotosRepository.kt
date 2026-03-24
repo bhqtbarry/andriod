@@ -10,8 +10,10 @@ import cn.syphotos.android.model.PhotoDetail
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ReviewItem
 import cn.syphotos.android.model.MySummaryStats
+import cn.syphotos.android.model.PagedResult
 import cn.syphotos.android.model.SearchSuggestion
 import cn.syphotos.android.model.UploadConfig
+import cn.syphotos.android.model.UploadExifInfo
 import cn.syphotos.android.model.UserSummary
 
 interface SyPhotosRepository {
@@ -22,6 +24,8 @@ interface SyPhotosRepository {
     fun logout()
 
     fun getPhotos(filter: PhotoFilter = PhotoFilter()): List<PhotoItem>
+
+    fun getPhotosPage(filter: PhotoFilter = PhotoFilter(), page: Int = 1, perPage: Int = 30): PagedResult<PhotoItem>
 
     fun getPhotoDetail(photoId: Long): PhotoDetail
 
@@ -35,9 +39,15 @@ interface SyPhotosRepository {
 
     fun getUploadConfig(): UploadConfig
 
+    fun lookupAircraftByRegistration(registration: String): Pair<String, String>?
+
+    fun extractUploadExif(file: java.io.File, originalName: String, mimeType: String): UploadExifInfo
+
     fun getMySummary(): Pair<UserSummary, MySummaryStats>
 
     fun getReviewItems(status: String): List<ReviewItem>
+
+    fun deleteMyPhoto(photoId: Long, titleConfirm: String)
 
     fun getMyLikes(): List<PhotoItem>
 

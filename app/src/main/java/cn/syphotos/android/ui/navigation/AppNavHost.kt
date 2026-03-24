@@ -37,6 +37,7 @@ fun AppNavHost(
             AllPhotosScreen(
                 state = viewModel.uiState,
                 onFilterChange = viewModel::updateFilter,
+                onLoadMore = viewModel::loadMorePhotos,
                 suggestionsByField = viewModel.uiState.suggestionState.itemsByField,
                 onRequestSuggestions = viewModel::requestSuggestions,
                 onClearSuggestions = viewModel::clearSuggestions,
@@ -61,6 +62,7 @@ fun AppNavHost(
                 state = viewModel.uiState.uploadState,
                 onChooseImage = viewModel::updateUploadSelection,
                 onDraftChange = viewModel::updateUploadDraft,
+                onRegistrationChange = viewModel::updateUploadRegistration,
                 onSubmit = viewModel::submitUpload,
             )
         }
@@ -80,6 +82,11 @@ fun AppNavHost(
                 onLanguageSelected = onLanguageSelected,
                 onLogin = viewModel::login,
                 onLogout = viewModel::logout,
+                onOpenPhoto = { photoId ->
+                    viewModel.prefetchPhotoDetail(photoId)
+                    onOpenPhoto(photoId)
+                },
+                onDeletePhoto = viewModel::deleteMyPhoto,
             )
         }
         composable(

@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import cn.syphotos.android.model.UploadExifInfo
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.UploadUiState
 import coil3.compose.AsyncImage
@@ -44,6 +45,7 @@ fun UploadScreen(
     state: UploadUiState,
     onChooseImage: (String, String) -> Unit,
     onDraftChange: ((UploadUiState) -> UploadUiState) -> Unit,
+    onRegistrationChange: (String) -> Unit,
     onSubmit: () -> Unit,
 ) {
     val strings = LocalAppStrings.current
@@ -101,8 +103,11 @@ fun UploadScreen(
                     FormTextField(
                         state.registrationNumber,
                         strings.uploadFieldRegistration,
-                        { value -> onDraftChange { current -> current.copy(registrationNumber = value.uppercase()) } },
+                        onRegistrationChange,
                     )
+                    state.registrationLookupMessage?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    }
                     FormTextField(state.aircraftModel, strings.uploadFieldAircraftModel, { value -> onDraftChange { current -> current.copy(aircraftModel = value) } })
                     FormTextField(state.airline, strings.uploadFieldAirline, { value -> onDraftChange { current -> current.copy(airline = value) } })
                     FormTextField(
@@ -130,6 +135,30 @@ fun UploadScreen(
                             onValueChange = { value -> onDraftChange { current -> current.copy(lensModel = value) } },
                             modifier = Modifier.weight(1f),
                         )
+                    }
+                    if (state.exifMessage != null || state.exifInfo != UploadExifInfo()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            shape = RoundedCornerShape(18.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text("EXIF", style = MaterialTheme.typography.titleSmall)
+                                state.exifMessage?.let {
+                                    Text(it, style = MaterialTheme.typography.bodySmall)
+                                }
+                                ExifValue("Camera", state.exifInfo.cameraModel)
+                                ExifValue("Lens", state.exifInfo.lensModel)
+                                ExifValue("Focal", state.exifInfo.focalLength)
+                                ExifValue("ISO", state.exifInfo.iso)
+                                ExifValue("Aperture", state.exifInfo.aperture)
+                                ExifValue("Shutter", state.exifInfo.shutterSpeed)
+                                ExifValue("Airport", state.exifInfo.nearestAirport)
+                                ExifValue("Taken", state.exifInfo.dateTimeOriginal)
+                            }
+                        }
                     }
                 }
             }
@@ -313,4 +342,13 @@ private fun MessageCard(
             color = if (error) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
         )
     }
+}
+
+@Composable
+private fun ExifValue(
+    label: String,
+    value: String,
+) {
+    if (value.isBlank()) return
+    Text("$label: $value", style = MaterialTheme.typography.bodySmall)
 }

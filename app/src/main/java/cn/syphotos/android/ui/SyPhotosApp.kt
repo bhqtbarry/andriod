@@ -1,6 +1,5 @@
 package cn.syphotos.android.ui
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccountCircle
@@ -8,13 +7,11 @@ import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.Map
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -32,7 +29,6 @@ import cn.syphotos.android.ui.i18n.rememberAppStrings
 import cn.syphotos.android.ui.navigation.AppDestination
 import cn.syphotos.android.ui.navigation.AppNavHost
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SyPhotosApp() {
     val navController = rememberNavController()
@@ -53,18 +49,6 @@ fun SyPhotosApp() {
 
     CompositionLocalProvider(LocalAppStrings provides strings) {
         Scaffold(
-            topBar = {
-                if (!isViewer) {
-                    TopAppBar(
-                        title = {
-                            Column {
-                                Text(strings.pageTitle(currentDestination?.route))
-                                Text(strings.pageSubtitle(currentDestination?.route))
-                            }
-                        },
-                    )
-                }
-            },
             bottomBar = {
                 if (!isViewer) {
                     NavigationBar {
