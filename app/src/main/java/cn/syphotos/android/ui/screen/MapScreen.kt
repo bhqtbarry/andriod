@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.NearMe
+import androidx.compose.material.icons.outlined.Navigation
 import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -267,7 +267,7 @@ fun MapScreen(
                     }
                 },
             ) {
-                Icon(Icons.AutoMirrored.Outlined.NearMe, contentDescription = "定位")
+                Icon(Icons.Outlined.Navigation, contentDescription = "定位")
             }
         }
         state.mapState.errorMessage?.let { message ->
