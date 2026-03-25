@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import cn.syphotos.android.model.PhotoFilter
 import cn.syphotos.android.model.PhotoItem
@@ -234,34 +235,55 @@ private fun ViewerPager(
                 items = gallery,
                 photoStateProvider = { id -> updatedPhotosById[id] },
             )
+            val binding = ViewerPagerBinding(
+                gallery = gallery,
+                adapter = adapter,
+                preloader = preloader,
+                onPhotoChanged = { photoId -> updatedPhotoChanged(photoId) },
+            )
             ViewPager2(context).apply {
                 offscreenPageLimit = 1
                 this.adapter = adapter
                 setCurrentItem(initialPage, false)
+                (getChildAt(0) as? RecyclerView)?.apply {
+                    itemAnimator = null
+                    overScrollMode = RecyclerView.OVER_SCROLL_NEVER
+                    setItemViewCacheSize(3)
+                }
                 registerOnPageChangeCallback(
                     object : ViewPager2.OnPageChangeCallback() {
                         override fun onPageSelected(position: Int) {
-                            val current = gallery.getOrNull(position) ?: return
-                            updatedPhotoChanged(current.id)
-                            preloader.preloadAround(position)
+                            val current = binding.gallery.getOrNull(position) ?: return
+                            binding.onPhotoChanged(current.id)
+                            binding.preloader.preloadAround(position)
                         }
                     },
                 )
                 preloader.preloadAround(initialPage)
-                tag = preloader
+                tag = binding
             }
         },
         update = { pager ->
-            (pager.adapter as? PhotoPagerAdapter)?.updateItems(gallery, photosById)
+            val binding = pager.tag as? ViewerPagerBinding ?: return@AndroidView
+            binding.gallery = gallery
+            binding.onPhotoChanged = { photoId -> updatedPhotoChanged(photoId) }
+            binding.adapter.updateItems(gallery, photosById)
+            binding.preloader.updateItems(gallery)
             val targetIndex = gallery.indexOfFirst { it.id == currentPhotoId }.takeIf { it >= 0 } ?: 0
             if (gallery.isNotEmpty() && pager.currentItem != targetIndex && gallery.getOrNull(pager.currentItem)?.id != currentPhotoId) {
                 pager.setCurrentItem(targetIndex, false)
             }
-            val preloader = pager.tag as? PhotoPreloader
-            preloader?.preloadAround(pager.currentItem)
+            binding.preloader.preloadAround(pager.currentItem)
         },
     )
 }
+
+private data class ViewerPagerBinding(
+    var gallery: List<PhotoItem>,
+    val adapter: PhotoPagerAdapter,
+    val preloader: PhotoPreloader,
+    var onPhotoChanged: (Long) -> Unit,
+)
 
 @Composable
 private fun DetailLinkRow(

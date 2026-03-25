@@ -561,6 +561,13 @@ class WebSyPhotosRepository(
                     level = item.optString("level").ifBlank { "airport" },
                     photoCount = item.optInt("photoCount", item.optInt("photo_count", 0)),
                     locationCode = item.optString("key").ifBlank { item.optString("locationCode").ifBlank { item.optString("location_code") } },
+                    icaoCode = item.optString("icaoCode").ifBlank { item.optString("icao_code") },
+                    airportName = item.optString("airportName")
+                        .ifBlank { item.optString("airport_name") }
+                        .ifBlank { item.optString("name") }
+                        .ifBlank { item.optString("label") },
+                    city = item.optString("city"),
+                    province = item.optString("province"),
                     latitude = item.optDouble("latitude").takeUnless { it.isNaN() },
                     longitude = item.optDouble("longitude").takeUnless { it.isNaN() },
                 ),

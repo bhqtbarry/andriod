@@ -75,6 +75,10 @@ data class MapCluster(
     val level: String,
     val photoCount: Int,
     val locationCode: String,
+    val icaoCode: String = "",
+    val airportName: String = "",
+    val city: String = "",
+    val province: String = "",
     val latitude: Double? = null,
     val longitude: Double? = null,
 )

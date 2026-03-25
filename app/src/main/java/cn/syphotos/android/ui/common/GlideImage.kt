@@ -5,9 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.DecodeFormat
 import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.request.RequestOptions
 
 @Composable
 fun GlideThumbnailImage(
@@ -19,7 +17,9 @@ fun GlideThumbnailImage(
         modifier = modifier,
         factory = { context ->
             ImageView(context).apply {
-                scaleType = ImageView.ScaleType.CENTER_CROP
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                adjustViewBounds = false
+                clipToOutline = true
                 this.contentDescription = contentDescription
             }
         },
@@ -27,10 +27,9 @@ fun GlideThumbnailImage(
             imageView.contentDescription = contentDescription
             Glide.with(imageView)
                 .load(url)
-                .override(480, 480)
-                .centerCrop()
+                .override(720, 360)
+                .fitCenter()
                 .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                .format(DecodeFormat.PREFER_RGB_565)
                 .dontAnimate()
                 .into(imageView)
         },

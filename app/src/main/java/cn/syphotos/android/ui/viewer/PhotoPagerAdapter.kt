@@ -5,7 +5,6 @@ import androidx.recyclerview.widget.RecyclerView
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ViewerPhotoState
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.DecodeFormat
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestOptions
 import com.github.chrisbanes.photoview.PhotoView
@@ -16,6 +15,10 @@ class PhotoPagerAdapter(
     private val onTap: () -> Unit,
 ) : RecyclerView.Adapter<PhotoPagerAdapter.PhotoViewHolder>() {
 
+    init {
+        setHasStableIds(true)
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PhotoViewHolder {
         val photoView = PhotoView(parent.context).apply {
             layoutParams = ViewGroup.LayoutParams(
@@ -25,6 +28,7 @@ class PhotoPagerAdapter(
             maximumScale = 4f
             mediumScale = 2f
             minimumScale = 1f
+            setBackgroundColor(android.graphics.Color.BLACK)
             setOnPhotoTapListener { _, _, _ -> onTap() }
             setOnViewTapListener { _, _, _ -> onTap() }
         }
@@ -47,7 +51,6 @@ class PhotoPagerAdapter(
                 RequestOptions()
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
                     .fitCenter()
-                    .format(DecodeFormat.PREFER_RGB_565)
                     .dontAnimate(),
             )
 
@@ -57,9 +60,8 @@ class PhotoPagerAdapter(
                     .load(fallbackUrl)
                     .apply(
                         RequestOptions()
-                            .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                            .diskCacheStrategy(DiskCacheStrategy.ALL)
                             .fitCenter()
-                            .format(DecodeFormat.PREFER_RGB_565)
                             .dontAnimate(),
                     ),
             )
@@ -67,6 +69,8 @@ class PhotoPagerAdapter(
 
         request.into(holder.photoView)
     }
+
+    override fun getItemId(position: Int): Long = items[position].id
 
     override fun getItemCount(): Int = items.size
 
