@@ -12,5 +12,5 @@ class FixedPhotoPreloadSizeProvider<T>(
         item: T,
         adapterPosition: Int,
         perItemPosition: Int,
-    ): IntArray = size
+    ): IntArray? = size
 }
