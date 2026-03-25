@@ -1,8 +1,12 @@
 package cn.syphotos.android.ui.viewer
 
+import android.graphics.Color
+import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import androidx.viewpager2.widget.ViewPager2
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ViewerPhotoState
 import com.bumptech.glide.Glide
@@ -21,19 +25,17 @@ class PhotoPagerAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PhotoViewHolder {
-        val photoView = PagerPhotoView(parent.context).apply {
+        val photoView = PhotoView(parent.context).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
-            maximumScale = 4f
-            mediumScale = 2f
             minimumScale = 1f
-            setBackgroundColor(android.graphics.Color.BLACK)
-            setOnPhotoTapListener { _, _, _ -> onTap() }
-            setOnViewTapListener { _, _, _ -> onTap() }
+            mediumScale = 2f
+            maximumScale = 4f
+            setBackgroundColor(Color.BLACK)
         }
-        return PhotoViewHolder(photoView)
+        return PhotoViewHolder(photoView, onTap)
     }
 
     override fun onBindViewHolder(holder: PhotoViewHolder, position: Int) {
@@ -44,38 +46,11 @@ class PhotoPagerAdapter(
         val primaryUrl = originalUrl.ifBlank { thumbUrl }
         val fallbackUrl = thumbUrl.ifBlank { originalUrl }
 
-        if (holder.photoId == item.id && holder.primaryUrl == primaryUrl && holder.fallbackUrl == fallbackUrl) {
-            return
-        }
-
-        holder.photoId = item.id
-        holder.primaryUrl = primaryUrl
-        holder.fallbackUrl = fallbackUrl
-        holder.photoView.scale = 1f
-
-        val request = Glide.with(holder.photoView)
-            .load(primaryUrl)
-            .apply(
-                RequestOptions()
-                    .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    .fitCenter()
-                    .dontAnimate(),
-            )
-
-        if (fallbackUrl.isNotBlank() && fallbackUrl != primaryUrl) {
-            request.thumbnail(
-                Glide.with(holder.photoView)
-                    .load(fallbackUrl)
-                    .apply(
-                        RequestOptions()
-                            .diskCacheStrategy(DiskCacheStrategy.ALL)
-                            .fitCenter()
-                            .dontAnimate(),
-                    ),
-            )
-        }
-
-        request.into(holder.photoView)
+        holder.bind(
+            photoId = item.id,
+            primaryUrl = primaryUrl,
+            fallbackUrl = fallbackUrl,
+        )
     }
 
     override fun getItemId(position: Int): Long = items[position].id
@@ -83,11 +58,9 @@ class PhotoPagerAdapter(
     override fun getItemCount(): Int = items.size
 
     override fun onViewRecycled(holder: PhotoViewHolder) {
+        holder.resetInteractionState()
         Glide.with(holder.photoView).clear(holder.photoView)
         holder.photoView.setImageDrawable(null)
-        holder.photoId = RecyclerView.NO_ID
-        holder.primaryUrl = ""
-        holder.fallbackUrl = ""
         super.onViewRecycled(holder)
     }
 
@@ -119,10 +92,116 @@ class PhotoPagerAdapter(
 
     class PhotoViewHolder(
         val photoView: PhotoView,
+        private val onTap: () -> Unit,
     ) : RecyclerView.ViewHolder(photoView) {
-        var photoId: Long = RecyclerView.NO_ID
-        var primaryUrl: String = ""
-        var fallbackUrl: String = ""
+        private var viewPager: ViewPager2? = null
+        private var photoId: Long = RecyclerView.NO_ID
+        private var primaryUrl: String = ""
+        private var fallbackUrl: String = ""
+
+        init {
+            photoView.setOnPhotoTapListener { _, _, _ -> onTap() }
+            photoView.setOnViewTapListener { _, _, _ -> onTap() }
+            photoView.setOnScaleChangeListener { _, _, _ ->
+                syncPagerScrollable()
+            }
+            photoView.setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        view.parent?.requestDisallowInterceptTouchEvent(true)
+                        syncPagerScrollable()
+                    }
+
+                    MotionEvent.ACTION_MOVE,
+                    MotionEvent.ACTION_POINTER_DOWN,
+                    MotionEvent.ACTION_POINTER_UP -> {
+                        view.parent?.requestDisallowInterceptTouchEvent(true)
+                        syncPagerScrollable()
+                    }
+
+                    MotionEvent.ACTION_UP,
+                    MotionEvent.ACTION_CANCEL -> {
+                        syncPagerScrollable()
+                        if (photoView.scale <= 1f) {
+                            view.parent?.requestDisallowInterceptTouchEvent(false)
+                        }
+                    }
+                }
+                false
+            }
+        }
+
+        fun bind(
+            photoId: Long,
+            primaryUrl: String,
+            fallbackUrl: String,
+        ) {
+            viewPager = findViewPager2(photoView)
+
+            if (this.photoId == photoId && this.primaryUrl == primaryUrl && this.fallbackUrl == fallbackUrl) {
+                syncPagerScrollable()
+                return
+            }
+
+            this.photoId = photoId
+            this.primaryUrl = primaryUrl
+            this.fallbackUrl = fallbackUrl
+
+            photoView.scale = 1f
+            syncPagerScrollable()
+
+            val request = Glide.with(photoView)
+                .load(primaryUrl)
+                .apply(
+                    RequestOptions()
+                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .fitCenter()
+                        .dontAnimate(),
+                )
+
+            if (fallbackUrl.isNotBlank() && fallbackUrl != primaryUrl) {
+                request.thumbnail(
+                    Glide.with(photoView)
+                        .load(fallbackUrl)
+                        .apply(
+                            RequestOptions()
+                                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                .fitCenter()
+                                .dontAnimate(),
+                        ),
+                )
+            }
+
+            request.into(photoView)
+        }
+
+        fun resetInteractionState() {
+            photoView.scale = 1f
+            viewPager?.isUserInputEnabled = true
+            photoView.parent?.requestDisallowInterceptTouchEvent(false)
+            photoId = RecyclerView.NO_ID
+            primaryUrl = ""
+            fallbackUrl = ""
+        }
+
+        private fun syncPagerScrollable() {
+            val zoomed = photoView.scale > 1f
+            viewPager?.isUserInputEnabled = !zoomed
+            if (!zoomed) {
+                photoView.parent?.requestDisallowInterceptTouchEvent(false)
+            }
+        }
+
+        private fun findViewPager2(view: View): ViewPager2? {
+            var current = view.parent
+            while (current != null) {
+                if (current is ViewPager2) {
+                    return current
+                }
+                current = current.parent
+            }
+            return null
+        }
     }
 
     private data class PagerEntry(
