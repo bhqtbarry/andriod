@@ -190,9 +190,8 @@ fun MapScreen(
                     selectedCluster = null
                 }
 
-                override fun onMapPoiClick(poi: com.baidu.mapapi.map.MapPoi?): Boolean {
+                override fun onMapPoiClick(poi: com.baidu.mapapi.map.MapPoi?) {
                     selectedCluster = null
-                    return false
                 }
             },
         )
