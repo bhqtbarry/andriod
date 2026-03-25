@@ -242,13 +242,13 @@ private fun ViewerPager(
                 onPhotoChanged = { photoId -> updatedPhotoChanged(photoId) },
             )
             ViewPager2(context).apply {
-                offscreenPageLimit = 1
+                offscreenPageLimit = 2
                 this.adapter = adapter
                 setCurrentItem(initialPage, false)
                 (getChildAt(0) as? RecyclerView)?.apply {
                     itemAnimator = null
                     overScrollMode = RecyclerView.OVER_SCROLL_NEVER
-                    setItemViewCacheSize(3)
+                    setItemViewCacheSize(5)
                 }
                 registerOnPageChangeCallback(
                     object : ViewPager2.OnPageChangeCallback() {

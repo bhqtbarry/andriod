@@ -1,169 +1,41 @@
-@file:OptIn(ExperimentalFoundationApi::class)
-
 package cn.syphotos.android.ui.screen
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FilterAlt
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cn.syphotos.android.model.PhotoFilter
-import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.SearchSuggestion
-import cn.syphotos.android.ui.common.GlideThumbnailImage
 import cn.syphotos.android.ui.i18n.LocalAppStrings
-import cn.syphotos.android.ui.state.AppUiState
 import kotlinx.coroutines.delay
 
 @Composable
-fun AllPhotosScreen(
-    state: AppUiState,
-    onFilterChange: (PhotoFilter) -> Unit,
-    onLoadMore: () -> Unit,
-    suggestionsByField: Map<String, List<SearchSuggestion>>,
-    onRequestSuggestions: (String, String) -> Unit,
-    onClearSuggestions: (String) -> Unit,
-    onOpenPhoto: (Long) -> Unit,
-    onToggleLike: (Long) -> Unit,
-) {
-    val gridState = rememberLazyGridState()
-    val shouldLoadMore by remember(gridState, state.feedState, state.photos.size) {
-        derivedStateOf { derivedLoadMore(gridState, state) }
-    }
-    var showFilters by rememberSaveable { mutableStateOf(false) }
-
-    LaunchedEffect(shouldLoadMore) {
-        if (shouldLoadMore) onLoadMore()
-    }
-
-    LaunchedEffect(showFilters) {
-        if (showFilters) {
-            gridState.animateScrollToItem(0)
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyVerticalGrid(
-            state = gridState,
-            columns = GridCells.Fixed(3),
-            contentPadding = PaddingValues(start = 4.dp, end = 4.dp, top = if (showFilters) 220.dp else 8.dp, bottom = 96.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFDFeEFF)),
-        ) {
-            state.feedState.errorMessage?.let { message ->
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = MaterialTheme.shapes.large,
-                        modifier = Modifier.padding(8.dp),
-                    ) {
-                        Text(
-                            text = message,
-                            modifier = Modifier.padding(12.dp),
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                        )
-                    }
-                }
-            }
-
-            items(state.photos, key = { it.id }) { photo ->
-                PhotoCard(photo = photo, onOpenPhoto = onOpenPhoto, onToggleLike = onToggleLike)
-            }
-
-            if (state.feedState.isLoadingMore) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-            }
-        }
-
-        if (showFilters) {
-            PhotoFilterPanel(
-                filter = state.photoFilter,
-                suggestionsByField = suggestionsByField,
-                onFilterChange = onFilterChange,
-                onRequestSuggestions = onRequestSuggestions,
-                onClearSuggestions = onClearSuggestions,
-                onClearAll = {
-                    onFilterChange(PhotoFilter())
-                    showFilters = false
-                },
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(8.dp),
-            )
-        }
-
-        FloatingActionButton(
-            onClick = { showFilters = !showFilters },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 18.dp, bottom = 18.dp),
-        ) {
-            Icon(Icons.Outlined.FilterAlt, contentDescription = "Filters")
-        }
-
-        if (state.feedState.isLoading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-        }
-    }
-}
-
-@Composable
-private fun SearchDrawer(
+fun PhotoFilterPanel(
     filter: PhotoFilter,
     suggestionsByField: Map<String, List<SearchSuggestion>>,
     onFilterChange: (PhotoFilter) -> Unit,
     onRequestSuggestions: (String, String) -> Unit,
     onClearSuggestions: (String) -> Unit,
+    onClearAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val strings = LocalAppStrings.current
@@ -202,7 +74,7 @@ private fun SearchDrawer(
                 singleLine = true,
             )
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SuggestionField(
+                SharedSuggestionField(
                     modifier = Modifier.weight(1f),
                     value = authorText,
                     label = strings.author,
@@ -218,7 +90,7 @@ private fun SearchDrawer(
                         onClearSuggestions("userid")
                     },
                 )
-                SuggestionField(
+                SharedSuggestionField(
                     modifier = Modifier.weight(1f),
                     value = locationText,
                     label = strings.location,
@@ -236,7 +108,7 @@ private fun SearchDrawer(
                 )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SuggestionField(
+                SharedSuggestionField(
                     modifier = Modifier.weight(1f),
                     value = registrationText,
                     label = strings.registration,
@@ -252,7 +124,7 @@ private fun SearchDrawer(
                         onClearSuggestions("registration_number")
                     },
                 )
-                SuggestionField(
+                SharedSuggestionField(
                     modifier = Modifier.weight(1f),
                     value = airlineText,
                     label = strings.airline,
@@ -270,7 +142,7 @@ private fun SearchDrawer(
                 )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SuggestionField(
+                SharedSuggestionField(
                     modifier = Modifier.weight(1f),
                     value = modelText,
                     label = strings.aircraftModel,
@@ -286,7 +158,7 @@ private fun SearchDrawer(
                         onClearSuggestions("aircraft_model")
                     },
                 )
-                SuggestionField(
+                SharedSuggestionField(
                     modifier = Modifier.weight(1f),
                     value = cameraText,
                     label = strings.camera,
@@ -303,7 +175,7 @@ private fun SearchDrawer(
                     },
                 )
             }
-            SuggestionField(
+            SharedSuggestionField(
                 value = lensText,
                 label = strings.lens,
                 suggestions = suggestionsByField["lens"].orEmpty(),
@@ -335,8 +207,9 @@ private fun SearchDrawer(
                     onClearSuggestions("aircraft_model")
                     onClearSuggestions("cam")
                     onClearSuggestions("lens")
+                    onClearAll()
                 },
-                modifier = Modifier.align(Alignment.End),
+                modifier = Modifier.align(androidx.compose.ui.Alignment.End),
             ) {
                 Text("清除筛选")
             }
@@ -344,21 +217,8 @@ private fun SearchDrawer(
     }
 }
 
-private fun derivedLoadMore(
-    gridState: LazyGridState,
-    state: AppUiState,
-): Boolean {
-    val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: return false
-    val totalItems = gridState.layoutInfo.totalItemsCount
-    if (totalItems == 0) return false
-    return state.feedState.hasMore &&
-        !state.feedState.isLoading &&
-        !state.feedState.isLoadingMore &&
-        lastVisible >= totalItems - 7
-}
-
 @Composable
-private fun SuggestionField(
+private fun SharedSuggestionField(
     value: String,
     label: String,
     suggestions: List<SearchSuggestion>,
@@ -389,39 +249,6 @@ private fun SuggestionField(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PhotoCard(
-    photo: PhotoItem,
-    onOpenPhoto: (Long) -> Unit,
-    onToggleLike: (Long) -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(2f)
-            .clip(RoundedCornerShape(2.dp))
-            .background(Color(0xFFDFeEFF))
-            .clickable { onOpenPhoto(photo.id) },
-    ) {
-        if (photo.thumbUrl.isNotBlank()) {
-            GlideThumbnailImage(
-                url = photo.thumbUrl,
-                contentDescription = photo.title,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(photo.title, modifier = Modifier.padding(8.dp), style = MaterialTheme.typography.bodySmall)
             }
         }
     }

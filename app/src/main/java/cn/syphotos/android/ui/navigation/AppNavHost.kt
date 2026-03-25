@@ -51,6 +51,10 @@ fun AppNavHost(
         composable(AppDestination.Map.route) {
             MapScreen(
                 state = viewModel.uiState,
+                suggestionsByField = viewModel.uiState.suggestionState.itemsByField,
+                onFilterChange = viewModel::updateFilter,
+                onRequestSuggestions = viewModel::requestSuggestions,
+                onClearSuggestions = viewModel::clearSuggestions,
                 onApplyMapSelection = {
                     viewModel.updateFilter(cn.syphotos.android.model.PhotoFilter(locationCode = it))
                     navController.navigate(AppDestination.AllPhotos.route)

@@ -17,9 +17,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.NearMe
+import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -29,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -40,6 +45,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import cn.syphotos.android.model.PhotoFilter
+import cn.syphotos.android.model.SearchSuggestion
 import cn.syphotos.android.ui.state.AppUiState
 import com.baidu.mapapi.map.BaiduMap
 import com.baidu.mapapi.map.BitmapDescriptorFactory
@@ -53,6 +60,10 @@ import com.baidu.mapapi.model.LatLng
 @Composable
 fun MapScreen(
     state: AppUiState,
+    suggestionsByField: Map<String, List<SearchSuggestion>>,
+    onFilterChange: (PhotoFilter) -> Unit,
+    onRequestSuggestions: (String, String) -> Unit,
+    onClearSuggestions: (String) -> Unit,
     onApplyMapSelection: (String) -> Unit,
 ) {
     val context = LocalContext.current
@@ -66,6 +77,7 @@ fun MapScreen(
         }
     }
     var selectedCluster by remember { mutableStateOf<cn.syphotos.android.model.MapCluster?>(null) }
+    var showFilters by rememberSaveable { mutableStateOf(false) }
     var currentLocation by remember { mutableStateOf<LatLng?>(null) }
     var hasLocationPermission by remember { mutableStateOf(hasLocationPermission(context)) }
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -215,31 +227,54 @@ fun MapScreen(
             factory = { mapView },
             modifier = Modifier.fillMaxSize(),
         )
-        FloatingActionButton(
-            onClick = {
-                val point = currentLocation
-                if (point != null) {
-                    mapView.map.animateMapStatus(MapStatusUpdateFactory.newLatLngZoom(point, 12f))
-                } else if (!hasLocationPermission) {
-                    permissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION,
-                        ),
-                    )
-                }
-            },
+        if (showFilters) {
+            PhotoFilterPanel(
+                filter = state.photoFilter,
+                suggestionsByField = suggestionsByField,
+                onFilterChange = onFilterChange,
+                onRequestSuggestions = onRequestSuggestions,
+                onClearSuggestions = onClearSuggestions,
+                onClearAll = {
+                    onFilterChange(PhotoFilter())
+                    showFilters = false
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp, start = 16.dp, end = 80.dp),
+            )
+        }
+        Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(top = 16.dp, end = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("定位")
+            FloatingActionButton(onClick = { showFilters = !showFilters }) {
+                Icon(Icons.Outlined.FilterAlt, contentDescription = "Filters")
+            }
+            FloatingActionButton(
+                onClick = {
+                    val point = currentLocation
+                    if (point != null) {
+                        mapView.map.animateMapStatus(MapStatusUpdateFactory.newLatLngZoom(point, 12f))
+                    } else if (!hasLocationPermission) {
+                        permissionLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                            ),
+                        )
+                    }
+                },
+            ) {
+                Icon(Icons.AutoMirrored.Outlined.NearMe, contentDescription = "定位")
+            }
         }
         state.mapState.errorMessage?.let { message ->
             Surface(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 16.dp, start = 16.dp, end = 88.dp),
+                    .padding(top = if (showFilters) 250.dp else 16.dp, start = 16.dp, end = 88.dp),
                 color = MaterialTheme.colorScheme.errorContainer,
                 shape = MaterialTheme.shapes.large,
             ) {

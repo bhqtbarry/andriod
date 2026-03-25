@@ -1,7 +1,6 @@
 package cn.syphotos.android.ui.viewer
 
 import android.view.ViewGroup
-import android.view.MotionEvent
 import androidx.recyclerview.widget.RecyclerView
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ViewerPhotoState
@@ -30,21 +29,9 @@ class PhotoPagerAdapter(
             mediumScale = 2f
             minimumScale = 1f
             setBackgroundColor(android.graphics.Color.BLACK)
-            setOnTouchListener { view, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN,
-                    MotionEvent.ACTION_MOVE,
-                    MotionEvent.ACTION_POINTER_DOWN,
-                    MotionEvent.ACTION_POINTER_UP -> {
-                        view.parent?.requestDisallowInterceptTouchEvent(scale > minimumScale + 0.01f)
-                    }
-
-                    MotionEvent.ACTION_UP,
-                    MotionEvent.ACTION_CANCEL -> {
-                        view.parent?.requestDisallowInterceptTouchEvent(false)
-                    }
-                }
-                false
+            runCatching {
+                javaClass.getMethod("setAllowParentInterceptOnEdge", Boolean::class.javaPrimitiveType)
+                    .invoke(this, true)
             }
             setOnPhotoTapListener { _, _, _ -> onTap() }
             setOnViewTapListener { _, _, _ -> onTap() }
@@ -101,9 +88,19 @@ class PhotoPagerAdapter(
         newItems: List<PhotoItem>,
         newPhotosById: Map<Long, ViewerPhotoState>,
     ) {
+        val oldItems = items
+        val oldPhotosById = photosById
         items = newItems
         photosById = newPhotosById
-        notifyDataSetChanged()
+        if (oldItems.size != newItems.size || oldItems.map { it.id } != newItems.map { it.id }) {
+            notifyDataSetChanged()
+            return
+        }
+        newItems.forEachIndexed { index, photo ->
+            if (oldItems[index] != photo || oldPhotosById[photo.id] != newPhotosById[photo.id]) {
+                notifyItemChanged(index)
+            }
+        }
     }
 
     class PhotoViewHolder(
