@@ -10,21 +10,25 @@ import com.bumptech.glide.request.RequestOptions
 class PhotoPreloader(
     private val context: Context,
     private var items: List<PhotoItem>,
-    private val photoStateProvider: (Long) -> ViewerPhotoState?,
+    private var photosById: Map<Long, ViewerPhotoState>,
 ) {
-    fun updateItems(newItems: List<PhotoItem>) {
+    fun update(
+        newItems: List<PhotoItem>,
+        newPhotosById: Map<Long, ViewerPhotoState>,
+    ) {
         items = newItems
+        photosById = newPhotosById
     }
 
     fun preloadAround(position: Int) {
-        preload(position - 1)
-        preload(position)
-        preload(position + 1)
+        for (offset in -2..2) {
+            if (offset != 0) preload(position + offset)
+        }
     }
 
     private fun preload(position: Int) {
         val item = items.getOrNull(position) ?: return
-        val cached = photoStateProvider(item.id)
+        val cached = photosById[item.id]
         val originalUrl = cached?.originalUrl?.takeIf { it.isNotBlank() } ?: item.originalUrl
         if (originalUrl.isBlank()) return
 

@@ -77,6 +77,7 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.baidu.lbsyun:BaiduMapSDK_Map:7.5.4")
     implementation("com.github.bumptech.glide:glide:4.16.0")
+    implementation("com.github.bumptech.glide:recyclerview-integration:4.16.0")
     implementation("com.github.chrisbanes:PhotoView:2.3.0")
     implementation("io.coil-kt.coil3:coil-compose:3.0.4")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.0.4")

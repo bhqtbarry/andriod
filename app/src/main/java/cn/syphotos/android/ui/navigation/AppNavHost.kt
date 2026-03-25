@@ -56,7 +56,7 @@ fun AppNavHost(
                 onRequestSuggestions = viewModel::requestSuggestions,
                 onClearSuggestions = viewModel::clearSuggestions,
                 onApplyMapSelection = {
-                    viewModel.updateFilter(cn.syphotos.android.model.PhotoFilter(locationCode = it))
+                    viewModel.updateFilter(viewModel.uiState.photoFilter.copy(locationCode = it))
                     navController.navigate(AppDestination.AllPhotos.route)
                 },
             )
