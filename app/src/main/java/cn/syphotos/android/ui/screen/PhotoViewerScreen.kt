@@ -1,5 +1,7 @@
 package cn.syphotos.android.ui.screen
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,6 +60,7 @@ fun PhotoViewerScreen(
     onApplyFilter: (PhotoFilter) -> Unit,
 ) {
     val strings = LocalAppStrings.current
+    val context = LocalContext.current
     val gallery = state.gallery.ifEmpty { state.detail?.photo?.let(::listOf).orEmpty() }
     val currentPhotoId = state.currentPhotoId ?: state.detail?.photo?.id
     val initialPage = remember(gallery, currentPhotoId) {
@@ -198,6 +202,19 @@ fun PhotoViewerScreen(
                 DetailLinkRow("ISO", state.detail?.takeIf { it.photo.id == photo.id }?.iso.orEmpty(), onClick = null)
                 DetailLinkRow("光圈", state.detail?.takeIf { it.photo.id == photo.id }?.aperture?.let { "f/$it" }.orEmpty(), onClick = null)
                 DetailLinkRow("快门", state.detail?.takeIf { it.photo.id == photo.id }?.shutter.orEmpty(), onClick = null)
+                Button(
+                    onClick = {
+                        context.startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://www.syphotos.cn/photo_detail.php?id=${photo.id}"),
+                            ),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("打开网站查看")
+                }
                 Button(onClick = { onToggleLike(photo.id) }, modifier = Modifier.fillMaxWidth()) {
                     Text(if (photo.liked) strings.unlike else strings.like)
                 }

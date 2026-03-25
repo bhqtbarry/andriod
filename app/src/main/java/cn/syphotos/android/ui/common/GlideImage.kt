@@ -36,6 +36,33 @@ fun GlideThumbnailImage(
     )
 }
 
+@Composable
+fun GlideFitWidthImage(
+    url: String,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            AppCompatImageView(context).apply {
+                adjustViewBounds = true
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                this.contentDescription = contentDescription
+            }
+        },
+        update = { imageView ->
+            imageView.contentDescription = contentDescription
+            Glide.with(imageView)
+                .load(url)
+                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                .dontTransform()
+                .dontAnimate()
+                .into(imageView)
+        },
+    )
+}
+
 private class HorizontalFitCropImageView(
     context: android.content.Context,
 ) : AppCompatImageView(context) {

@@ -3,10 +3,12 @@ package cn.syphotos.android.ui.screen
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -73,6 +75,26 @@ fun PhotoFilterPanel(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
             )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(strings.sort, style = MaterialTheme.typography.labelLarge)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(
+                        "default" to strings.sortDefault,
+                        "created_at" to strings.sortCreatedAt,
+                        "views" to strings.sortViews,
+                        "likes" to strings.sortLikes,
+                    ).forEach { (value, label) ->
+                        FilterChip(
+                            selected = draft.sort == value,
+                            onClick = { draft = draft.copy(sort = value) },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+            }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SharedSuggestionField(
                     modifier = Modifier.weight(1f),

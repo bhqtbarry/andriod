@@ -84,7 +84,7 @@ fun AllPhotosScreen(
         LazyVerticalGrid(
             state = gridState,
             columns = GridCells.Fixed(3),
-            contentPadding = PaddingValues(start = 4.dp, end = 4.dp, top = if (showFilters) 220.dp else 8.dp, bottom = 96.dp),
+            contentPadding = PaddingValues(start = 4.dp, end = 4.dp, top = if (showFilters) 280.dp else 8.dp, bottom = 96.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
             modifier = Modifier

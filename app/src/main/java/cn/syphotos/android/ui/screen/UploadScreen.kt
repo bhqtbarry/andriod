@@ -5,6 +5,7 @@ import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,14 +32,25 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import cn.syphotos.android.ui.common.GlideFitWidthImage
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.UploadUiState
-import coil3.compose.AsyncImage
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.github.chrisbanes.photoview.PhotoView
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -49,6 +63,7 @@ fun UploadScreen(
 ) {
     val strings = LocalAppStrings.current
     val context = LocalContext.current
+    var showPreviewDialog by remember { mutableStateOf(false) }
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         val fileName = uri?.let { selectedUri ->
             context.contentResolver.query(selectedUri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
@@ -86,14 +101,17 @@ fun UploadScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(220.dp)
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(20.dp)),
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(20.dp))
+                                .clickable { showPreviewDialog = true },
                         ) {
-                            AsyncImage(
-                                model = state.selectedImageUri,
+                            GlideFitWidthImage(
+                                url = state.selectedImageUri,
                                 contentDescription = state.fileName,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            UploadWatermarkOverlay(
+                                state = state,
+                                modifier = Modifier.matchParentSize(),
                             )
                         }
                     }
@@ -285,6 +303,14 @@ fun UploadScreen(
             state.successMessage?.let { message -> MessageCard(message = message, error = false) }
         }
     }
+
+    if (showPreviewDialog && state.selectedImageUri.isNotBlank()) {
+        UploadImagePreviewDialog(
+            imageUri = state.selectedImageUri,
+            state = state,
+            onDismiss = { showPreviewDialog = false },
+        )
+    }
 }
 
 @Composable
@@ -360,5 +386,123 @@ private fun MessageCard(
             modifier = Modifier.padding(14.dp),
             color = if (error) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
         )
+    }
+}
+
+@Composable
+private fun UploadImagePreviewDialog(
+    imageUri: String,
+    state: UploadUiState,
+    onDismiss: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+        ) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { context ->
+                    PhotoView(context).apply {
+                        minimumScale = 1f
+                        mediumScale = 2f
+                        maximumScale = 5f
+                        setBackgroundColor(android.graphics.Color.BLACK)
+                    }
+                },
+                update = { photoView ->
+                    Glide.with(photoView)
+                        .load(imageUri)
+                        .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                        .fitCenter()
+                        .dontAnimate()
+                        .into(photoView)
+                },
+            )
+            UploadWatermarkOverlay(
+                state = state,
+                modifier = Modifier.matchParentSize(),
+            )
+            Text(
+                text = "点击空白处关闭，可双指缩放",
+                color = Color.White.copy(alpha = 0.8f),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 24.dp),
+            )
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(20.dp)
+                    .clickable { onDismiss() },
+                color = Color(0x55000000),
+                shape = RoundedCornerShape(999.dp),
+            ) {
+                Text(
+                    text = "关闭",
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UploadWatermarkOverlay(
+    state: UploadUiState,
+    modifier: Modifier = Modifier,
+) {
+    val watermarkText = state.registrationNumber.ifBlank {
+        state.title.ifBlank { "SYPHOTOS" }
+    }
+    val alignment = when (state.watermarkPosition) {
+        "top-left" -> Alignment.TopStart
+        "top-center" -> Alignment.TopCenter
+        "top-right" -> Alignment.TopEnd
+        "middle-left" -> Alignment.CenterStart
+        "middle-center" -> Alignment.Center
+        "middle-right" -> Alignment.CenterEnd
+        "bottom-left" -> Alignment.BottomStart
+        "bottom-center" -> Alignment.BottomCenter
+        else -> Alignment.BottomEnd
+    }
+    val textColor = if (state.watermarkColor == "black") Color.Black else Color.White
+    val fontWeight = when (state.watermarkAuthorStyle) {
+        "bold" -> FontWeight.Bold
+        else -> FontWeight.Medium
+    }
+    val fontSize = watermarkFontSize(state.watermarkSize)
+    val horizontalPadding = (12 + state.watermarkSize / 2).dp
+    val verticalPadding = (12 + state.watermarkSize / 3).dp
+
+    Box(modifier = modifier) {
+        Text(
+            text = watermarkText,
+            color = textColor.copy(alpha = state.watermarkOpacity.coerceIn(10, 100) / 100f),
+            fontSize = fontSize,
+            fontWeight = fontWeight,
+            modifier = Modifier
+                .align(alignment)
+                .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+        )
+    }
+}
+
+private fun watermarkFontSize(sizePercent: Int): TextUnit {
+    return when {
+        sizePercent <= 10 -> 14.sp
+        sizePercent <= 15 -> 16.sp
+        sizePercent <= 20 -> 18.sp
+        sizePercent <= 25 -> 20.sp
+        sizePercent <= 30 -> 22.sp
+        sizePercent <= 35 -> 24.sp
+        sizePercent <= 40 -> 26.sp
+        sizePercent <= 45 -> 28.sp
+        else -> 30.sp
     }
 }

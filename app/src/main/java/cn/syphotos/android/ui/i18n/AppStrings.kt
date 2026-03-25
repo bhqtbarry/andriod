@@ -29,6 +29,11 @@ class AppStrings(
     val lens get() = text("lens")
     val registration get() = text("registration")
     val location get() = text("location")
+    val sort get() = text("sort")
+    val sortDefault get() = text("sort_default")
+    val sortCreatedAt get() = text("sort_created_at")
+    val sortViews get() = text("sort_views")
+    val sortLikes get() = text("sort_likes")
     val mapTitle get() = text("map_title")
     val mapSubtitle get() = text("map_subtitle")
     val uploadTitle get() = text("upload_title")
@@ -160,6 +165,11 @@ class AppStrings(
             "lens" to "Lens",
             "registration" to "Registration",
             "location" to "Location / IATA",
+            "sort" to "Sort",
+            "sort_default" to "Default",
+            "sort_created_at" to "Upload time",
+            "sort_views" to "Views",
+            "sort_likes" to "Likes",
             "map_title" to "Photo Map",
             "map_subtitle" to "Use geography as the starting point, then jump back into the full archive with shared filters.",
             "upload_title" to "Upload",
@@ -254,6 +264,11 @@ class AppStrings(
                 "lens" to "镜头",
                 "registration" to "注册号",
                 "location" to "地点 / IATA",
+                "sort" to "排序",
+                "sort_default" to "默认排序",
+                "sort_created_at" to "按上传时间",
+                "sort_views" to "按浏览量",
+                "sort_likes" to "按点赞",
                 "map_title" to "照片地图",
                 "map_subtitle" to "先按地理位置浏览，再带着筛选条件回到完整图库。",
                 "upload_title" to "上传",

@@ -9,6 +9,7 @@ data class PhotoFilter(
     val lens: String = "",
     val registration: String = "",
     val locationCode: String = "",
+    val sort: String = "default",
 )
 
 data class PhotoItem(

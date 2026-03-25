@@ -1,12 +1,13 @@
 package cn.syphotos.android.ui.screen
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,10 +32,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import cn.syphotos.android.model.PhotoItem
-import cn.syphotos.android.ui.common.GlideThumbnailImage
+import cn.syphotos.android.ui.common.GlideFitWidthImage
 import cn.syphotos.android.ui.i18n.AppLanguage
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.MyUiState
@@ -54,6 +56,7 @@ fun MyScreen(
     onDeletePhoto: (PhotoItem) -> Unit,
 ) {
     val strings = LocalAppStrings.current
+    val context = LocalContext.current
     var loginInput by remember { mutableStateOf("") }
     var passwordInput by remember { mutableStateOf("") }
     var pendingDelete by remember { mutableStateOf<PhotoItem?>(null) }
@@ -79,12 +82,87 @@ fun MyScreen(
 
     Column(modifier = Modifier.fillMaxSize()) {
         TabRow(selectedTabIndex = selectedTab) {
-            Tab(selected = selectedTab == 0, onClick = { onTabSelected(0) }, text = { Text("资料") })
-            Tab(selected = selectedTab == 1, onClick = { onTabSelected(1) }, text = { Text("作品管理") })
+            Tab(selected = selectedTab == 0, onClick = { onTabSelected(0) }, text = { Text("作品管理") })
+            Tab(selected = selectedTab == 1, onClick = { onTabSelected(1) }, text = { Text("资料") })
         }
 
         when (selectedTab) {
-            0 -> LazyColumn(
+            0 -> PullToRefreshBox(
+                isRefreshing = state.isLoading,
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                LazyColumn(
+                    state = worksListState,
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    item {
+                        SectionCard(strings.myWorks) {
+                            Text(strings.worksCount(state.summary.allPhotos))
+                        }
+                    }
+                    if (state.authSession.isLoggedIn) {
+                        item {
+                            SectionCard("统计") {
+                                Text("上传总数: ${state.summary.allPhotos}")
+                                Text("通过: ${state.summary.approvedPhotos}")
+                                Text("待审核: ${state.summary.pendingPhotos}")
+                                Text("被拒绝: ${state.summary.rejectedPhotos}")
+                                Text("Likes: ${state.summary.likedPhotos}")
+                            }
+                        }
+                    }
+                    state.successMessage?.let { item { MessageSurface(it, false) } }
+                    state.errorMessage?.let { item { MessageSurface(it, true) } }
+                    if (state.isDeleting) {
+                        item { CircularProgressIndicator(modifier = Modifier.padding(horizontal = 16.dp)) }
+                    }
+                    items(state.works, key = { it.id }) { photo ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(20.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                if (photo.thumbUrl.isNotBlank()) {
+                                    GlideFitWidthImage(
+                                        url = photo.thumbUrl,
+                                        contentDescription = photo.title,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onOpenPhoto(photo.id) },
+                                    )
+                                }
+                                Text(photo.title, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    when (photo.status) {
+                                        "approved" -> "已批准"
+                                        "rejected" -> "已拒绝"
+                                        else -> "待审核"
+                                    },
+                                    color = when (photo.status) {
+                                        "approved" -> Color(0xFF2E8B57)
+                                        "rejected" -> Color(0xFFC95A5A)
+                                        else -> MaterialTheme.colorScheme.primary
+                                    },
+                                )
+                                Text(photo.airline.ifBlank { photo.aircraftModel })
+                                Text(photo.registration.ifBlank { photo.createdAt }, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    TextButton(onClick = { pendingDelete = photo }) { Text("删除") }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            else -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -124,6 +202,26 @@ fun MyScreen(
                             Button(onClick = { onLogin(loginInput, passwordInput) }, modifier = Modifier.fillMaxWidth()) {
                                 Text(strings.signIn)
                             }
+                            Button(
+                                onClick = {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse("https://www.syphotos.cn/register.php")),
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("注册")
+                            }
+                            Button(
+                                onClick = {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse("https://www.syphotos.cn/forgot_password.php")),
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text("忘记密码")
+                            }
                             state.authErrorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                         } else {
                             Text("${strings.userLabel}: ${state.user.username}")
@@ -139,101 +237,6 @@ fun MyScreen(
                 state.errorMessage?.let { item { MessageSurface(it, true) } }
                 if (state.isLoading || state.isDeleting) {
                     item { CircularProgressIndicator(modifier = Modifier.padding(horizontal = 16.dp)) }
-                }
-                if (state.authSession.isLoggedIn) {
-                    item {
-                        SectionCard("统计") {
-                            Text("上传总数: ${state.summary.allPhotos}")
-                            Text("通过: ${state.summary.approvedPhotos}")
-                            Text("待审核: ${state.summary.pendingPhotos}")
-                            Text("被拒绝: ${state.summary.rejectedPhotos}")
-                            Text("Likes: ${state.summary.likedPhotos}")
-                        }
-                    }
-                    item {
-                        SectionCard(strings.devices) {
-                            Text("${strings.currentDevice} + ${strings.revocable}")
-                        }
-                    }
-                    items(state.sessions, key = { it.id }) { session ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(session.deviceName, style = MaterialTheme.typography.titleMedium)
-                                Text("${session.systemVersion} • ${session.ipAddress}")
-                                Text("${strings.loginLabel}: ${session.loginTime}")
-                                Text(if (session.isCurrent) strings.currentDevice else strings.revocable)
-                            }
-                        }
-                    }
-                }
-            }
-
-            else -> PullToRefreshBox(
-                isRefreshing = state.isLoading,
-                onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                LazyColumn(
-                    state = worksListState,
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    item {
-                        SectionCard(strings.myWorks) {
-                            Text(strings.worksCount(state.summary.allPhotos))
-                        }
-                    }
-                    state.successMessage?.let { item { MessageSurface(it, false) } }
-                    state.errorMessage?.let { item { MessageSurface(it, true) } }
-                    if (state.isDeleting) {
-                        item { CircularProgressIndicator(modifier = Modifier.padding(horizontal = 16.dp)) }
-                    }
-                    items(state.works, key = { it.id }) { photo ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            shape = RoundedCornerShape(20.dp),
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                if (photo.thumbUrl.isNotBlank()) {
-                                    GlideThumbnailImage(
-                                        url = photo.thumbUrl,
-                                        contentDescription = photo.title,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(180.dp)
-                                            .clickable { onOpenPhoto(photo.id) },
-                                    )
-                                }
-                                Text(photo.title, style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    when (photo.status) {
-                                        "approved" -> "已批准"
-                                        "rejected" -> "已拒绝"
-                                        else -> "待审核"
-                                    },
-                                    color = when (photo.status) {
-                                        "approved" -> Color(0xFF2E8B57)
-                                        "rejected" -> Color(0xFFC95A5A)
-                                        else -> MaterialTheme.colorScheme.primary
-                                    },
-                                )
-                                Text(photo.airline.ifBlank { photo.aircraftModel })
-                                Text(photo.registration.ifBlank { photo.createdAt }, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    TextButton(onClick = { pendingDelete = photo }) { Text("删除") }
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }

@@ -87,6 +87,7 @@ class WebSyPhotosRepository(
             appendIfNotBlank("lens", filter.lens)
             appendIfNotBlank("registration_number", filter.registration.uppercase())
             appendIfNotBlank("iatacode", filter.locationCode.uppercase())
+            filter.sort.takeIf { it.isNotBlank() && it != "default" }?.let { appendQueryParameter("sort", it) }
         }.build()
         val root = openJson(uri.toString())
         val items = when {
@@ -232,6 +233,7 @@ class WebSyPhotosRepository(
             appendIfNotBlank("lens", filter.lens)
             appendIfNotBlank("registration_number", filter.registration.uppercase())
             appendIfNotBlank("iatacode", filter.locationCode.uppercase())
+            filter.sort.takeIf { it.isNotBlank() && it != "default" }?.let { appendQueryParameter("sort", it) }
         }.build()
         return buildList {
             val items = openJsonArray(uri.toString())
@@ -258,6 +260,7 @@ class WebSyPhotosRepository(
             appendIfNotBlank("cam", filter.camera)
             appendIfNotBlank("lens", filter.lens)
             appendIfNotBlank("registration_number", filter.registration.uppercase())
+            filter.sort.takeIf { it.isNotBlank() && it != "default" }?.let { appendQueryParameter("sort", it) }
         }.build()
         return openJsonArray(uri.toString()).toMapClusters()
     }
