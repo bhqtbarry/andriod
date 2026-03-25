@@ -3,6 +3,7 @@ package cn.syphotos.android.ui.screen
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +31,7 @@ import cn.syphotos.android.model.SearchSuggestion
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import kotlinx.coroutines.delay
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PhotoFilterPanel(
     filter: PhotoFilter,
