@@ -4,7 +4,7 @@ import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ViewerPhotoState
 import com.bumptech.glide.RequestBuilder
 import com.bumptech.glide.RequestManager
-import com.bumptech.glide.integration.recyclerview.RecyclerViewPreloader
+import com.bumptech.glide.ListPreloader
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.request.RequestOptions
 
@@ -12,7 +12,7 @@ class PhotoViewerPreloadModelProvider(
     private val requestManager: RequestManager,
     private var items: List<PhotoItem>,
     private var photosById: Map<Long, ViewerPhotoState>,
-) : RecyclerViewPreloader.PreloadModelProvider<String> {
+) : ListPreloader.PreloadModelProvider<String> {
 
     fun update(
         newItems: List<PhotoItem>,

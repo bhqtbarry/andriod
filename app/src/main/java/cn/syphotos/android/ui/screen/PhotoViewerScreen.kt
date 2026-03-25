@@ -40,11 +40,11 @@ import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ViewerPhotoState
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.ViewerUiState
+import cn.syphotos.android.ui.viewer.FixedPhotoPreloadSizeProvider
 import cn.syphotos.android.ui.viewer.PhotoPagerAdapter
 import cn.syphotos.android.ui.viewer.PhotoPreloader
 import cn.syphotos.android.ui.viewer.PhotoViewerPreloadModelProvider
 import com.bumptech.glide.Glide
-import com.bumptech.glide.integration.recyclerview.FixedPreloadSizeProvider
 import com.bumptech.glide.integration.recyclerview.RecyclerViewPreloader
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -263,7 +263,7 @@ private fun ViewerPager(
                         RecyclerViewPreloader(
                             requestManager,
                             preloadModelProvider,
-                            FixedPreloadSizeProvider(2048, 2048),
+                            FixedPhotoPreloadSizeProvider<String>(2048, 2048),
                             4,
                         ),
                     )
