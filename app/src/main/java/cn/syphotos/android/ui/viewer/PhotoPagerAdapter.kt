@@ -1,6 +1,7 @@
 package cn.syphotos.android.ui.viewer
 
 import android.view.ViewGroup
+import android.view.MotionEvent
 import androidx.recyclerview.widget.RecyclerView
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.model.ViewerPhotoState
@@ -29,6 +30,22 @@ class PhotoPagerAdapter(
             mediumScale = 2f
             minimumScale = 1f
             setBackgroundColor(android.graphics.Color.BLACK)
+            setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN,
+                    MotionEvent.ACTION_MOVE,
+                    MotionEvent.ACTION_POINTER_DOWN,
+                    MotionEvent.ACTION_POINTER_UP -> {
+                        view.parent?.requestDisallowInterceptTouchEvent(scale > minimumScale + 0.01f)
+                    }
+
+                    MotionEvent.ACTION_UP,
+                    MotionEvent.ACTION_CANCEL -> {
+                        view.parent?.requestDisallowInterceptTouchEvent(false)
+                    }
+                }
+                false
+            }
             setOnPhotoTapListener { _, _, _ -> onTap() }
             setOnViewTapListener { _, _, _ -> onTap() }
         }

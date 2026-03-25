@@ -48,6 +48,7 @@ import com.baidu.mapapi.map.MapView
 import com.baidu.mapapi.map.Marker
 import com.baidu.mapapi.map.MarkerOptions
 import com.baidu.mapapi.map.MyLocationData
+import com.baidu.mapapi.map.OnMapClickListener
 import com.baidu.mapapi.model.LatLng
 
 @Composable
@@ -65,7 +66,7 @@ fun MapScreen(
             map.animateMapStatus(MapStatusUpdateFactory.newLatLngZoom(CHINA_CENTER, CHINA_DEFAULT_ZOOM))
         }
     }
-    var selectedCluster by remember { mutableStateOf(state.mapState.clusters.firstOrNull()) }
+    var selectedCluster by remember { mutableStateOf<cn.syphotos.android.model.MapCluster?>(null) }
     var currentLocation by remember { mutableStateOf<LatLng?>(null) }
     var hasLocationPermission by remember { mutableStateOf(hasLocationPermission(context)) }
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -155,10 +156,13 @@ fun MapScreen(
         baiduMap.clear()
         val clusters = state.mapState.clusters
             .filter { it.latitude != null && it.longitude != null && it.locationCode.isNotBlank() }
-        selectedCluster = selectedCluster?.let { selected ->
-            clusters.firstOrNull { it.locationCode == selected.locationCode }
-        }
-        clusters.forEach { cluster ->
+        selectedCluster = selectedCluster?.let { selected -> clusters.firstOrNull { it.locationCode == selected.locationCode } }
+        clusters
+            .sortedWith(
+                compareBy<cn.syphotos.android.model.MapCluster> { it.photoCount > 0 }
+                    .thenBy { it.photoCount },
+            )
+            .forEach { cluster ->
             val point = LatLng(cluster.latitude ?: return@forEach, cluster.longitude ?: return@forEach)
             val markerIcon = createMarkerIcon(cluster.photoCount)
             val markerOptions = MarkerOptions()
@@ -181,6 +185,18 @@ fun MapScreen(
             }
             true
         }
+        baiduMap.setOnMapClickListener(
+            object : OnMapClickListener {
+                override fun onMapClick(point: LatLng?) {
+                    selectedCluster = null
+                }
+
+                override fun onMapPoiClick(poi: com.baidu.mapapi.map.MapPoi?): Boolean {
+                    selectedCluster = null
+                    return false
+                }
+            },
+        )
         if (clusters.isEmpty()) {
             baiduMap.animateMapStatus(MapStatusUpdateFactory.newLatLngZoom(CHINA_CENTER, CHINA_DEFAULT_ZOOM))
         } else if (clusters.size == 1) {
@@ -191,7 +207,6 @@ fun MapScreen(
                     6f,
                 ),
             )
-            selectedCluster = first
         } else if (state.photoFilter.locationCode.isBlank()) {
             baiduMap.animateMapStatus(MapStatusUpdateFactory.newLatLngZoom(CHINA_CENTER, CHINA_DEFAULT_ZOOM))
         }
