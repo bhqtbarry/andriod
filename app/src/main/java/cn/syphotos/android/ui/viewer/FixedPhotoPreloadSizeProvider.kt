@@ -2,7 +2,7 @@ package cn.syphotos.android.ui.viewer
 
 import com.bumptech.glide.ListPreloader
 
-class FixedPhotoPreloadSizeProvider<T>(
+class FixedPhotoPreloadSizeProvider<T : Any>(
     width: Int,
     height: Int,
 ) : ListPreloader.PreloadSizeProvider<T> {
