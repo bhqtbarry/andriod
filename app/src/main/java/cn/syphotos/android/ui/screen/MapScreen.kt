@@ -48,7 +48,6 @@ import com.baidu.mapapi.map.MapView
 import com.baidu.mapapi.map.Marker
 import com.baidu.mapapi.map.MarkerOptions
 import com.baidu.mapapi.map.MyLocationData
-import com.baidu.mapapi.map.OnMapClickListener
 import com.baidu.mapapi.model.LatLng
 
 @Composable
@@ -186,7 +185,7 @@ fun MapScreen(
             true
         }
         baiduMap.setOnMapClickListener(
-            object : OnMapClickListener {
+            object : BaiduMap.OnMapClickListener {
                 override fun onMapClick(point: LatLng?) {
                     selectedCluster = null
                 }
