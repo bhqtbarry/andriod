@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import cn.syphotos.android.data.SessionStore
 import cn.syphotos.android.data.SyPhotosRepository
 import cn.syphotos.android.data.WebSyPhotosRepository
+import cn.syphotos.android.model.VersionCheckResult
 import cn.syphotos.android.model.AuthSession
 import cn.syphotos.android.model.AirlineDirectoryItem
 import cn.syphotos.android.model.AirlineTreeItem
@@ -43,7 +44,7 @@ class AppViewModel(
         private set
 
     init {
-        refreshAll()
+        checkVersionAndRefresh()
     }
 
     fun updateFilter(filter: PhotoFilter) {
@@ -475,6 +476,39 @@ class AppViewModel(
         refreshMy()
     }
 
+    fun retryVersionCheck() {
+        checkVersionAndRefresh()
+    }
+
+    private fun checkVersionAndRefresh() {
+        uiState = uiState.copy(versionState = VersionUiState(isChecking = true, errorMessage = null))
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { webRepository.checkAppVersion() }
+            }.onSuccess { result ->
+                val versionState = VersionUiState(
+                    isChecking = false,
+                    hasChecked = true,
+                    result = result,
+                    errorMessage = null,
+                )
+                uiState = uiState.copy(versionState = versionState)
+                if (!result.requiresUpgrade) {
+                    refreshAll()
+                }
+            }.onFailure { error ->
+                uiState = uiState.copy(
+                    versionState = VersionUiState(
+                        isChecking = false,
+                        hasChecked = true,
+                        errorMessage = error.message ?: "版本校验失败",
+                    ),
+                )
+                refreshAll()
+            }
+        }
+    }
+
     private fun refreshAll() {
         refreshFeed(uiState.photoFilter, reset = true)
         refreshMap(uiState.photoFilter)
@@ -797,6 +831,7 @@ class AppViewModel(
 }
 
 data class AppUiState(
+    val versionState: VersionUiState = VersionUiState(),
     val photoFilter: PhotoFilter = PhotoFilter(),
     val photos: List<PhotoItem> = emptyList(),
     val feedState: FeedUiState = FeedUiState(),
@@ -889,3 +924,12 @@ data class ViewerUiState(
 data class SuggestionUiState(
     val itemsByField: Map<String, List<SearchSuggestion>> = emptyMap(),
 )
+
+data class VersionUiState(
+    val isChecking: Boolean = false,
+    val hasChecked: Boolean = false,
+    val result: VersionCheckResult? = null,
+    val errorMessage: String? = null,
+) {
+    val requiresUpgrade: Boolean get() = result?.requiresUpgrade == true
+}

@@ -2,7 +2,6 @@ package cn.syphotos.android.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -20,6 +19,7 @@ import cn.syphotos.android.ui.state.AppViewModel
 
 @Composable
 fun AppNavHost(
+    viewModel: AppViewModel,
     navController: NavHostController,
     modifier: Modifier = Modifier,
     selectedPhotoId: Long?,
@@ -27,7 +27,6 @@ fun AppNavHost(
     selectedLanguage: AppLanguage,
     onLanguageSelected: (AppLanguage) -> Unit,
 ) {
-    val viewModel: AppViewModel = viewModel()
     NavHost(
         navController = navController,
         startDestination = AppDestination.AllPhotos.route,

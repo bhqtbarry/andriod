@@ -1,6 +1,7 @@
 package cn.syphotos.android.data
 
 import android.net.Uri
+import android.os.Build
 import cn.syphotos.android.BuildConfig
 import cn.syphotos.android.model.CategoryCount
 import cn.syphotos.android.model.MapCluster
@@ -18,6 +19,7 @@ import cn.syphotos.android.model.UploadConfig
 import cn.syphotos.android.model.UploadExifInfo
 import cn.syphotos.android.model.DeviceSession
 import cn.syphotos.android.model.UserSummary
+import cn.syphotos.android.model.VersionCheckResult
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedInputStream
@@ -33,6 +35,23 @@ class WebSyPhotosRepository(
 ) : SyPhotosRepository {
     override fun getAuthSession(): AuthSession = sessionStore.read()
 
+    fun checkAppVersion(): VersionCheckResult {
+        val root = openJson(
+            apiUri("system/version.php").buildUpon()
+                .appendQueryParameter("app_version", BuildConfig.VERSION_NAME)
+                .build()
+                .toString(),
+        )
+        val requiresUpgrade = root.optBoolean("requires_upgrade", false)
+        return VersionCheckResult(
+            currentVersion = root.optString("current_version").ifBlank { BuildConfig.VERSION_NAME },
+            requiredVersion = root.optString("required_version"),
+            requiresUpgrade = requiresUpgrade,
+            upgradeUrl = root.optString("upgrade_url").ifBlank { "https://www.syphotos.cn" },
+            message = root.optString("message").ifBlank { if (requiresUpgrade) "当前版本过低" else "" },
+        )
+    }
+
     override fun login(login: String, password: String): AuthSession {
         val json = openJson(
             url = apiUri("auth/login.php").toString(),
@@ -41,8 +60,9 @@ class WebSyPhotosRepository(
                 "login" to login,
                 "password" to password,
                 "platform" to "android",
-                "device_name" to "Android App",
-                "app_version" to "1.0.0",
+                "device_name" to deviceName(),
+                "system_version" to osVersion(),
+                "app_version" to BuildConfig.VERSION_NAME,
             ),
         )
         val user = json.optJSONObject("user") ?: JSONObject()
@@ -304,7 +324,7 @@ class WebSyPhotosRepository(
             connectTimeout = 15_000
             readTimeout = 30_000
             doOutput = true
-            setRequestProperty("Accept", "application/json")
+            applyCommonHeaders()
             setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
             val cookieHeader = sessionStore.readCookieHeader()
             if (cookieHeader.isNotBlank()) {
@@ -481,7 +501,7 @@ class WebSyPhotosRepository(
             requestMethod = method
             connectTimeout = 8_000
             readTimeout = 8_000
-            setRequestProperty("Accept", "application/json")
+            applyCommonHeaders()
             if (requiresAuth) {
                 var token = sessionStore.read().accessToken
                 if (token.isBlank() && retryAfterRefresh && refreshSession()) {
@@ -646,6 +666,21 @@ class WebSyPhotosRepository(
         }
     }
 
+    private fun HttpURLConnection.applyCommonHeaders() {
+        setRequestProperty("Accept", "application/json")
+        setRequestProperty("X-App-Version", BuildConfig.VERSION_NAME)
+        setRequestProperty("X-Device", deviceName())
+        setRequestProperty("X-OS", "Android ${osVersion()}")
+        setRequestProperty("User-Agent", "SYPhotos-Android/${BuildConfig.VERSION_NAME} (Android ${osVersion()}; ${deviceName()})")
+    }
+
+    private fun deviceName(): String = listOfNotNull(Build.MANUFACTURER, Build.MODEL)
+        .joinToString(" ")
+        .trim()
+        .ifBlank { "Android App" }
+
+    private fun osVersion(): String = Build.VERSION.RELEASE?.trim().orEmpty().ifBlank { Build.VERSION.SDK_INT.toString() }
+
     private fun refreshSession(): Boolean {
         val current = sessionStore.read()
         if (current.refreshToken.isBlank()) return false
@@ -686,7 +721,7 @@ class WebSyPhotosRepository(
             connectTimeout = 15_000
             readTimeout = 30_000
             doOutput = true
-            setRequestProperty("Accept", "application/json")
+            applyCommonHeaders()
             setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
             if (requiresAuth) {
                 var token = sessionStore.read().accessToken

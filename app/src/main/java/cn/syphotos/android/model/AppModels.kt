@@ -167,3 +167,11 @@ data class UploadExifInfo(
     val nearestAirport: String = "",
     val dateTimeOriginal: String = "",
 )
+
+data class VersionCheckResult(
+    val currentVersion: String = "",
+    val requiredVersion: String = "",
+    val requiresUpgrade: Boolean = false,
+    val upgradeUrl: String = "https://www.syphotos.cn",
+    val message: String = "",
+)
