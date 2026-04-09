@@ -36,19 +36,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.recyclerview.widget.RecyclerView
-import androidx.viewpager2.widget.ViewPager2
 import cn.syphotos.android.model.PhotoFilter
-import cn.syphotos.android.model.PhotoItem
-import cn.syphotos.android.model.ViewerPhotoState
+import cn.syphotos.android.model.asGalleryPhotoSource
+import cn.syphotos.android.ui.gallery.GalleryViewerPagerView
 import cn.syphotos.android.ui.i18n.LocalAppStrings
 import cn.syphotos.android.ui.state.ViewerUiState
-import cn.syphotos.android.ui.viewer.FixedPhotoPreloadSizeProvider
-import cn.syphotos.android.ui.viewer.PhotoPagerAdapter
-import cn.syphotos.android.ui.viewer.PhotoPreloader
-import cn.syphotos.android.ui.viewer.PhotoViewerPreloadModelProvider
-import com.bumptech.glide.Glide
-import com.bumptech.glide.integration.recyclerview.RecyclerViewPreloader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +58,12 @@ fun PhotoViewerScreen(
     val initialPage = remember(gallery, currentPhotoId) {
         gallery.indexOfFirst { it.id == currentPhotoId }.takeIf { it >= 0 } ?: 0
     }
+    val gallerySources = remember(gallery, state.photosById) {
+        gallery.map { photo ->
+            photo.asGalleryPhotoSource(state.photosById[photo.id])
+        }
+    }
+
     var currentPage by rememberSaveable(gallery, currentPhotoId) { mutableIntStateOf(initialPage) }
     var showChrome by rememberSaveable { mutableStateOf(true) }
     var showDetails by rememberSaveable { mutableStateOf(false) }
@@ -82,15 +80,13 @@ fun PhotoViewerScreen(
         color = Color.Black,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            if (gallery.isNotEmpty()) {
+            if (gallerySources.isNotEmpty()) {
                 ViewerPager(
-                    gallery = gallery,
+                    gallery = gallerySources,
                     currentPhotoId = currentPhotoId,
-                    photosById = state.photosById,
-                    onPhotoChanged = {
-                        currentPage = gallery.indexOfFirst { photoItem -> photoItem.id == it }.takeIf { index -> index >= 0 }
-                            ?: currentPage
-                        onPhotoChanged(it)
+                    onPhotoChanged = { photoId ->
+                        currentPage = gallery.indexOfFirst { it.id == photoId }.takeIf { it >= 0 } ?: currentPage
+                        onPhotoChanged(photoId)
                     },
                     onToggleChrome = { showChrome = !showChrome },
                 )
@@ -228,102 +224,29 @@ fun PhotoViewerScreen(
 
 @Composable
 private fun ViewerPager(
-    gallery: List<PhotoItem>,
+    gallery: List<cn.syphotos.android.model.GalleryPhotoSource>,
     currentPhotoId: Long?,
-    photosById: Map<Long, ViewerPhotoState>,
     onPhotoChanged: (Long) -> Unit,
     onToggleChrome: () -> Unit,
 ) {
     val updatedPhotoChanged by rememberUpdatedState(onPhotoChanged)
     val updatedToggleChrome by rememberUpdatedState(onToggleChrome)
-    val initialPage = remember(gallery, currentPhotoId) {
-        gallery.indexOfFirst { it.id == currentPhotoId }.takeIf { it >= 0 } ?: 0
-    }
 
     AndroidView(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black),
-        factory = { context ->
-            val requestManager = Glide.with(context)
-            val adapter = PhotoPagerAdapter(
+        factory = { context -> GalleryViewerPagerView(context) },
+        update = { view ->
+            view.bind(
                 items = gallery,
-                photosById = photosById,
-                onTap = { updatedToggleChrome() },
+                currentPhotoId = currentPhotoId,
+                onPageChanged = { updatedPhotoChanged(it) },
+                onPhotoTap = { updatedToggleChrome() },
             )
-            val preloader = PhotoPreloader(
-                context = context,
-                items = gallery,
-                photosById = photosById,
-            )
-            val preloadModelProvider = PhotoViewerPreloadModelProvider(
-                requestManager = requestManager,
-                items = gallery,
-                photosById = photosById,
-            )
-            val binding = ViewerPagerBinding(
-                gallery = gallery,
-                adapter = adapter,
-                preloader = preloader,
-                preloadModelProvider = preloadModelProvider,
-                onPhotoChanged = { photoId -> updatedPhotoChanged(photoId) },
-            )
-            ViewPager2(context).apply {
-                offscreenPageLimit = 2
-                this.adapter = adapter
-                setCurrentItem(initialPage, false)
-                (getChildAt(0) as? RecyclerView)?.apply {
-                    itemAnimator = null
-                    overScrollMode = RecyclerView.OVER_SCROLL_NEVER
-                    setItemViewCacheSize(5)
-                    addOnScrollListener(
-                        RecyclerViewPreloader(
-                            requestManager,
-                            preloadModelProvider,
-                            FixedPhotoPreloadSizeProvider<String>(2048, 2048),
-                            4,
-                        ),
-                    )
-                }
-                registerOnPageChangeCallback(
-                    object : ViewPager2.OnPageChangeCallback() {
-                        override fun onPageSelected(position: Int) {
-                            val current = binding.gallery.getOrNull(position) ?: return
-                            binding.onPhotoChanged(current.id)
-                            binding.preloader.preloadCurrent(position)
-                            binding.preloader.preloadAround(position)
-                        }
-                    },
-                )
-                preloader.preloadCurrent(initialPage)
-                preloader.preloadAround(initialPage)
-                tag = binding
-            }
-        },
-        update = { pager ->
-            val binding = pager.tag as? ViewerPagerBinding ?: return@AndroidView
-            binding.gallery = gallery
-            binding.onPhotoChanged = { photoId -> updatedPhotoChanged(photoId) }
-            binding.adapter.updateItems(gallery, photosById)
-            binding.preloader.update(gallery, photosById)
-            binding.preloadModelProvider.update(gallery, photosById)
-            val targetIndex = gallery.indexOfFirst { it.id == currentPhotoId }.takeIf { it >= 0 } ?: 0
-            if (gallery.isNotEmpty() && pager.currentItem != targetIndex && gallery.getOrNull(pager.currentItem)?.id != currentPhotoId) {
-                pager.setCurrentItem(targetIndex, false)
-            }
-            binding.preloader.preloadCurrent(pager.currentItem)
-            binding.preloader.preloadAround(pager.currentItem)
         },
     )
 }
-
-private data class ViewerPagerBinding(
-    var gallery: List<PhotoItem>,
-    val adapter: PhotoPagerAdapter,
-    val preloader: PhotoPreloader,
-    val preloadModelProvider: PhotoViewerPreloadModelProvider,
-    var onPhotoChanged: (Long) -> Unit,
-)
 
 @Composable
 private fun DetailLinkRow(
