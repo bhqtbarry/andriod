@@ -8,6 +8,7 @@ import cn.syphotos.android.R
 import cn.syphotos.android.model.GalleryPhotoSource
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.request.target.Target
 import java.io.File
 import java.util.WeakHashMap
 import kotlinx.coroutines.CoroutineScope
@@ -90,6 +91,7 @@ class PersistentImageLoader(
                     target = target,
                     file = originalFile,
                     centerCrop = false,
+                    loadFullResolution = true,
                 )
                 return@launch
             }
@@ -109,6 +111,7 @@ class PersistentImageLoader(
                     target = target,
                     file = thumbFile,
                     centerCrop = false,
+                    loadFullResolution = false,
                 )
             } else if (isLatestRequest(target, requestToken)) {
                 target.setImageDrawable(fallbackDrawable)
@@ -127,6 +130,7 @@ class PersistentImageLoader(
                     target = target,
                     file = fetchedOriginal,
                     centerCrop = false,
+                    loadFullResolution = true,
                 )
             }
             onLoadingChanged(false)
@@ -157,12 +161,16 @@ class PersistentImageLoader(
         target: ImageView,
         file: File,
         centerCrop: Boolean,
+        loadFullResolution: Boolean = false,
     ) {
         Glide.with(target)
             .load(file)
             .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
             .dontAnimate()
             .also { builder ->
+                if (loadFullResolution) {
+                    builder.override(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL)
+                }
                 if (centerCrop) {
                     builder.centerCrop()
                 } else {

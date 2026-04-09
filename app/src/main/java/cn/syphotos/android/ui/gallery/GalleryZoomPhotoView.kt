@@ -18,7 +18,7 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
         scaleType = ScaleType.FIT_CENTER
         runCatching {
             javaClass.getMethod("setAllowParentInterceptOnEdge", Boolean::class.javaPrimitiveType)
-                .invoke(this, false)
+                .invoke(this, true)
         }
         setOnScaleChangeListener { _, _, _ ->
             onZoomStateChanged?.invoke(isZoomed())
@@ -26,17 +26,18 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        val shouldKeepTouch = isZoomed() || event.pointerCount > 1
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN,
             MotionEvent.ACTION_MOVE,
             MotionEvent.ACTION_POINTER_DOWN,
             MotionEvent.ACTION_POINTER_UP -> {
-                parent?.requestDisallowInterceptTouchEvent(isZoomed())
+                parent?.requestDisallowInterceptTouchEvent(shouldKeepTouch)
             }
 
             MotionEvent.ACTION_UP,
             MotionEvent.ACTION_CANCEL -> {
-                parent?.requestDisallowInterceptTouchEvent(isZoomed())
+                parent?.requestDisallowInterceptTouchEvent(shouldKeepTouch)
             }
         }
         return super.onTouchEvent(event)
