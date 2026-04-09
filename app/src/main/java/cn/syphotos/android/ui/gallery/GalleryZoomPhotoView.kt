@@ -4,8 +4,8 @@ import android.content.Context
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ViewConfiguration
-import kotlin.math.abs
 import com.github.chrisbanes.photoview.PhotoView
+import kotlin.math.abs
 
 class GalleryZoomPhotoView @JvmOverloads constructor(
     context: Context,
@@ -35,16 +35,28 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 downX = event.x
                 downY = event.y
-                parent?.requestDisallowInterceptTouchEvent(false)
+                parent?.requestDisallowInterceptTouchEvent(true)
             }
 
             MotionEvent.ACTION_MOVE -> {
-                if (!isZoomed() && event.pointerCount == 1) {
-                    val dx = event.x - downX
-                    val dy = event.y - downY
-                    val horizontalSwipe = abs(dx) > touchSlop && abs(dx) > abs(dy)
-                    if (horizontalSwipe) {
-                        parent?.requestDisallowInterceptTouchEvent(false)
+                when {
+                    event.pointerCount >= 2 -> {
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+
+                    isZoomed() -> {
+                        parent?.requestDisallowInterceptTouchEvent(true)
+                    }
+
+                    else -> {
+                        val dx = event.x - downX
+                        val dy = event.y - downY
+                        val horizontalSwipe = abs(dx) > touchSlop && abs(dx) > abs(dy)
+                        if (horizontalSwipe) {
+                            parent?.requestDisallowInterceptTouchEvent(false)
+                        } else {
+                            parent?.requestDisallowInterceptTouchEvent(true)
+                        }
                     }
                 }
             }
@@ -56,7 +68,7 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
 
             MotionEvent.ACTION_UP,
             MotionEvent.ACTION_CANCEL -> {
-                parent?.requestDisallowInterceptTouchEvent(isZoomed())
+                parent?.requestDisallowInterceptTouchEvent(false)
             }
         }
         return super.onTouchEvent(event)

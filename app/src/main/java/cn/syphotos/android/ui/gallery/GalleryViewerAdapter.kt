@@ -6,9 +6,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ProgressBar
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import cn.syphotos.android.R
 import cn.syphotos.android.image.PersistentImageLoader
 import cn.syphotos.android.model.GalleryPhotoSource
 
@@ -38,13 +40,18 @@ class GalleryViewerAdapter(
             setBackgroundColor(Color.BLACK)
         }
 
-        val progressBar = ProgressBar(parent.context).apply {
+        val progressBar = ProgressBar(parent.context, null, android.R.attr.progressBarStyleHorizontal).apply {
             layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.CENTER,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                2,
+                Gravity.BOTTOM,
             )
             visibility = View.GONE
+            isIndeterminate = true
+            progressDrawable = ContextCompat.getDrawable(context, android.R.color.white)
+            indeterminateDrawable?.setTint(Color.WHITE)
+            progressDrawable?.setTint(Color.WHITE)
+            alpha = 0.92f
         }
 
         container.addView(photoView)
