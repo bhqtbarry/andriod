@@ -290,10 +290,12 @@ private fun ViewerPager(
                         override fun onPageSelected(position: Int) {
                             val current = binding.gallery.getOrNull(position) ?: return
                             binding.onPhotoChanged(current.id)
+                            binding.preloader.preloadCurrent(position)
                             binding.preloader.preloadAround(position)
                         }
                     },
                 )
+                preloader.preloadCurrent(initialPage)
                 preloader.preloadAround(initialPage)
                 tag = binding
             }
@@ -309,6 +311,7 @@ private fun ViewerPager(
             if (gallery.isNotEmpty() && pager.currentItem != targetIndex && gallery.getOrNull(pager.currentItem)?.id != currentPhotoId) {
                 pager.setCurrentItem(targetIndex, false)
             }
+            binding.preloader.preloadCurrent(pager.currentItem)
             binding.preloader.preloadAround(pager.currentItem)
         },
     )

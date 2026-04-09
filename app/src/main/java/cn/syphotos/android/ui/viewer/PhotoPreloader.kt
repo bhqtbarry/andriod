@@ -26,6 +26,10 @@ class PhotoPreloader(
         }
     }
 
+    fun preloadCurrent(position: Int) {
+        preload(position)
+    }
+
     private fun preload(position: Int) {
         val item = items.getOrNull(position) ?: return
         val cached = photosById[item.id]

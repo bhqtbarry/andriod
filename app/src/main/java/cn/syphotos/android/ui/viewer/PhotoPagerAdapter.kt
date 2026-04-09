@@ -3,7 +3,6 @@ package cn.syphotos.android.ui.viewer
 import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -20,7 +19,6 @@ import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
-import com.github.chrisbanes.photoview.PhotoView
 
 class PhotoPagerAdapter(
     private var items: List<PhotoItem>,
@@ -40,7 +38,7 @@ class PhotoPagerAdapter(
             )
             setBackgroundColor(Color.BLACK)
         }
-        val photoView = PhotoView(parent.context).apply {
+        val photoView = PagerPhotoView(parent.context).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -118,7 +116,7 @@ class PhotoPagerAdapter(
 
     class PhotoViewHolder(
         containerView: View,
-        val photoView: PhotoView,
+        val photoView: PagerPhotoView,
         private val loadingIndicator: ProgressBar,
         private val onTap: () -> Unit,
     ) : RecyclerView.ViewHolder(containerView) {
@@ -132,30 +130,6 @@ class PhotoPagerAdapter(
             photoView.setOnViewTapListener { _, _, _ -> onTap() }
             photoView.setOnScaleChangeListener { _, _, _ ->
                 syncPagerScrollable()
-            }
-            photoView.setOnTouchListener { view, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        view.parent?.requestDisallowInterceptTouchEvent(true)
-                        syncPagerScrollable()
-                    }
-
-                    MotionEvent.ACTION_MOVE,
-                    MotionEvent.ACTION_POINTER_DOWN,
-                    MotionEvent.ACTION_POINTER_UP -> {
-                        view.parent?.requestDisallowInterceptTouchEvent(true)
-                        syncPagerScrollable()
-                    }
-
-                    MotionEvent.ACTION_UP,
-                    MotionEvent.ACTION_CANCEL -> {
-                        syncPagerScrollable()
-                        if (photoView.scale <= 1f) {
-                            view.parent?.requestDisallowInterceptTouchEvent(false)
-                        }
-                    }
-                }
-                false
             }
         }
 
@@ -178,7 +152,9 @@ class PhotoPagerAdapter(
             photoView.scale = 1f
             syncPagerScrollable()
             loadingIndicator.visibility =
-                if (fallbackUrl.isNotBlank() && fallbackUrl != primaryUrl) View.VISIBLE else View.GONE
+                if (photoView.drawable == null && fallbackUrl.isNotBlank() && fallbackUrl != primaryUrl) View.VISIBLE else View.GONE
+
+            val currentDrawable = photoView.drawable
 
             val request = Glide.with(photoView)
                 .load(primaryUrl)
@@ -186,6 +162,7 @@ class PhotoPagerAdapter(
                     RequestOptions()
                         .diskCacheStrategy(DiskCacheStrategy.ALL)
                         .fitCenter()
+                        .placeholder(currentDrawable)
                         .dontAnimate(),
                 )
                 .listener(
@@ -225,6 +202,7 @@ class PhotoPagerAdapter(
                             RequestOptions()
                                 .diskCacheStrategy(DiskCacheStrategy.ALL)
                                 .fitCenter()
+                                .placeholder(currentDrawable)
                                 .dontAnimate(),
                         ),
                 )
