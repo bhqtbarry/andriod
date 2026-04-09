@@ -139,13 +139,7 @@ private fun VersionCheckingScreen() {
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            CircularProgressIndicator()
-            Text("正在检查版本...", style = MaterialTheme.typography.titleMedium)
-        }
+        CircularProgressIndicator()
     }
 }
 

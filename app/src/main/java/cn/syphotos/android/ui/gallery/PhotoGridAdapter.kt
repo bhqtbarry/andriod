@@ -26,12 +26,11 @@ class PhotoGridAdapter(
             setBackgroundColor(Color.BLACK)
         }
 
-        val imageView = SquareImageView(parent.context).apply {
+        val imageView = WideCropImageView(parent.context).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
-            scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
             setBackgroundColor(Color.parseColor("#111111"))
         }
 
@@ -53,7 +52,7 @@ class PhotoGridAdapter(
 
     class PhotoGridViewHolder(
         container: FrameLayout,
-        val imageView: SquareImageView,
+        val imageView: WideCropImageView,
         private val onPhotoClick: (GalleryPhotoSource) -> Unit,
     ) : RecyclerView.ViewHolder(container) {
         private var currentPhoto: GalleryPhotoSource? = null
