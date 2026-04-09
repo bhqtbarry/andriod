@@ -11,22 +11,23 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : PhotoView(context, attrs) {
-    var onZoomStateChanged: ((Boolean) -> Unit)? = null
+    var onPageSwipeRequested: (() -> Unit)? = null
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private val minScaleValue = 1f
+    private val mediumScaleValue = 2.2f
+    private val maxScaleValue = 5f
     private var downX = 0f
     private var downY = 0f
+    private var zoomEnabled = true
 
     init {
-        minimumScale = 1f
-        mediumScale = 2.2f
-        maximumScale = 5f
+        minimumScale = minScaleValue
+        mediumScale = mediumScaleValue
+        maximumScale = maxScaleValue
         scaleType = ScaleType.FIT_CENTER
         runCatching {
             javaClass.getMethod("setAllowParentInterceptOnEdge", Boolean::class.javaPrimitiveType)
                 .invoke(this, true)
-        }
-        setOnScaleChangeListener { _, _, _ ->
-            onZoomStateChanged?.invoke(isZoomed())
         }
     }
 
@@ -53,6 +54,7 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
                         val dy = event.y - downY
                         val horizontalSwipe = abs(dx) > touchSlop && abs(dx) > abs(dy)
                         if (horizontalSwipe) {
+                            onPageSwipeRequested?.invoke()
                             parent?.requestDisallowInterceptTouchEvent(false)
                         } else {
                             parent?.requestDisallowInterceptTouchEvent(true)
@@ -76,10 +78,23 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
 
     fun resetZoom() {
         setScale(minimumScale, false)
-        onZoomStateChanged?.invoke(false)
+    }
+
+    fun setZoomEnabled(enabled: Boolean) {
+        zoomEnabled = enabled
+        if (!enabled) {
+            minimumScale = 1f
+            mediumScale = 1f
+            maximumScale = 1f
+            setScale(1f, false)
+        } else {
+            minimumScale = minScaleValue
+            mediumScale = mediumScaleValue
+            maximumScale = maxScaleValue
+        }
     }
 
     private fun isZoomed(): Boolean {
-        return scale > minimumScale + 0.02f
+        return zoomEnabled && scale > minimumScale + 0.02f
     }
 }

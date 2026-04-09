@@ -3,6 +3,7 @@ package cn.syphotos.android.ui.screen
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,10 +16,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -30,10 +33,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cn.syphotos.android.model.PhotoItem
 import cn.syphotos.android.ui.common.GlideFitWidthImage
@@ -130,31 +136,67 @@ fun MyScreen(
                                 verticalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
                                 if (photo.thumbUrl.isNotBlank()) {
-                                    GlideFitWidthImage(
-                                        url = photo.thumbUrl,
-                                        contentDescription = photo.title,
+                                    Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clickable { onOpenPhoto(photo.id) },
+                                    ) {
+                                        GlideFitWidthImage(
+                                            url = photo.thumbUrl,
+                                            contentDescription = photo.title,
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                    }
+                                }
+                                Text(
+                                    photo.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    WorkInfoCell(
+                                        modifier = Modifier.weight(1f),
+                                        label = "编号",
+                                        value = photo.registration.ifBlank { "#${photo.id}" },
+                                    )
+                                    WorkInfoCell(
+                                        modifier = Modifier.weight(1f),
+                                        label = "机型",
+                                        value = photo.aircraftModel.ifBlank { "-" },
+                                    )
+                                    WorkInfoCell(
+                                        modifier = Modifier.weight(1f),
+                                        label = "位置",
+                                        value = photo.location.ifBlank { "-" },
                                     )
                                 }
-                                Text(photo.title, style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    when (photo.status) {
-                                        "approved" -> "已批准"
-                                        "rejected" -> "已拒绝"
-                                        else -> "待审核"
-                                    },
-                                    color = when (photo.status) {
-                                        "approved" -> Color(0xFF2E8B57)
-                                        "rejected" -> Color(0xFFC95A5A)
-                                        else -> MaterialTheme.colorScheme.primary
-                                    },
-                                )
-                                Text(photo.airline.ifBlank { photo.aircraftModel })
-                                Text(photo.registration.ifBlank { photo.createdAt }, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    TextButton(onClick = { pendingDelete = photo }) { Text("删除") }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Button(
+                                        onClick = {},
+                                        enabled = false,
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            disabledContainerColor = statusBackground(photo.status),
+                                            disabledContentColor = statusForeground(photo.status),
+                                        ),
+                                    ) {
+                                        Text(statusLabel(photo.status), fontWeight = FontWeight.SemiBold)
+                                    }
+                                    OutlinedButton(
+                                        onClick = { pendingDelete = photo },
+                                        shape = RoundedCornerShape(12.dp),
+                                    ) {
+                                        Text("删除这张照片", fontWeight = FontWeight.Medium)
+                                    }
                                 }
                             }
                         }
@@ -240,6 +282,55 @@ fun MyScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun WorkInfoCell(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+private fun statusLabel(status: String): String {
+    return when (status) {
+        "approved" -> "已批准"
+        "rejected" -> "已拒绝"
+        else -> "待审核"
+    }
+}
+
+private fun statusBackground(status: String): Color {
+    return when (status) {
+        "approved" -> Color(0xFFDDF6E8)
+        "rejected" -> Color(0xFFFCE3E3)
+        else -> Color(0xFFE8F0FF)
+    }
+}
+
+private fun statusForeground(status: String): Color {
+    return when (status) {
+        "approved" -> Color(0xFF176B43)
+        "rejected" -> Color(0xFFB42318)
+        else -> Color(0xFF245BDB)
     }
 }
 

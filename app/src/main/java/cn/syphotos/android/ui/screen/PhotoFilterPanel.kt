@@ -39,6 +39,7 @@ fun PhotoFilterPanel(
     onFilterChange: (PhotoFilter) -> Unit,
     onRequestSuggestions: (String, String) -> Unit,
     onClearSuggestions: (String) -> Unit,
+    onApply: () -> Unit,
     onClearAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -214,28 +215,35 @@ fun PhotoFilterPanel(
                     onClearSuggestions("lens")
                 },
             )
-            TextButton(
-                onClick = {
-                    draft = PhotoFilter()
-                    authorText = ""
-                    airlineText = ""
-                    modelText = ""
-                    cameraText = ""
-                    lensText = ""
-                    registrationText = ""
-                    locationText = ""
-                    onClearSuggestions("userid")
-                    onClearSuggestions("iatacode")
-                    onClearSuggestions("registration_number")
-                    onClearSuggestions("airline")
-                    onClearSuggestions("aircraft_model")
-                    onClearSuggestions("cam")
-                    onClearSuggestions("lens")
-                    onClearAll()
-                },
-                modifier = Modifier.align(androidx.compose.ui.Alignment.End),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
             ) {
-                Text("清除筛选")
+                TextButton(onClick = onApply) {
+                    Text("应用筛选")
+                }
+                TextButton(
+                    onClick = {
+                        draft = PhotoFilter()
+                        authorText = ""
+                        airlineText = ""
+                        modelText = ""
+                        cameraText = ""
+                        lensText = ""
+                        registrationText = ""
+                        locationText = ""
+                        onClearSuggestions("userid")
+                        onClearSuggestions("iatacode")
+                        onClearSuggestions("registration_number")
+                        onClearSuggestions("airline")
+                        onClearSuggestions("aircraft_model")
+                        onClearSuggestions("cam")
+                        onClearSuggestions("lens")
+                        onClearAll()
+                    },
+                ) {
+                    Text("清除筛选")
+                }
             }
         }
     }

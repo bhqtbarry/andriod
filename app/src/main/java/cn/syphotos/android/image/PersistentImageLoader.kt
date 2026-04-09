@@ -2,12 +2,16 @@ package cn.syphotos.android.image
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.ColorDrawable
 import android.widget.ImageView
 import cn.syphotos.android.R
 import cn.syphotos.android.model.GalleryPhotoSource
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.target.Target
 import java.io.File
 import java.util.WeakHashMap
@@ -25,6 +29,11 @@ class PersistentImageLoader(
     private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val jobs = WeakHashMap<ImageView, Job>()
     private val fallbackDrawable = ColorDrawable(Color.parseColor("#121212"))
+
+    data class ViewerLoadState(
+        val isLoading: Boolean,
+        val isFullResolutionReady: Boolean,
+    )
 
     fun clear(target: ImageView) {
         synchronized(jobs) {
@@ -74,7 +83,7 @@ class PersistentImageLoader(
     fun loadViewerImage(
         photo: GalleryPhotoSource,
         target: ImageView,
-        onLoadingChanged: (Boolean) -> Unit,
+        onStateChanged: (ViewerLoadState) -> Unit,
     ) {
         clear(target)
         val requestToken = System.nanoTime()
@@ -86,7 +95,7 @@ class PersistentImageLoader(
             }
 
             if (originalFile != null) {
-                onLoadingChanged(false)
+                onStateChanged(ViewerLoadState(isLoading = false, isFullResolutionReady = true))
                 loadLocalFile(
                     target = target,
                     file = originalFile,
@@ -96,7 +105,7 @@ class PersistentImageLoader(
                 return@launch
             }
 
-            onLoadingChanged(true)
+            onStateChanged(ViewerLoadState(isLoading = true, isFullResolutionReady = false))
 
             val thumbFile = withContext(Dispatchers.IO) {
                 imageStore.localFile(photo.id, ImageVariant.THUMBNAIL)
@@ -112,6 +121,11 @@ class PersistentImageLoader(
                     file = thumbFile,
                     centerCrop = false,
                     loadFullResolution = false,
+                    onDisplayed = {
+                        if (isLatestRequest(target, requestToken)) {
+                            onStateChanged(ViewerLoadState(isLoading = true, isFullResolutionReady = false))
+                        }
+                    },
                 )
             } else if (isLatestRequest(target, requestToken)) {
                 target.setImageDrawable(fallbackDrawable)
@@ -131,9 +145,15 @@ class PersistentImageLoader(
                     file = fetchedOriginal,
                     centerCrop = false,
                     loadFullResolution = true,
+                    onDisplayed = {
+                        if (isLatestRequest(target, requestToken)) {
+                            onStateChanged(ViewerLoadState(isLoading = false, isFullResolutionReady = true))
+                        }
+                    },
                 )
+            } else {
+                onStateChanged(ViewerLoadState(isLoading = false, isFullResolutionReady = false))
             }
-            onLoadingChanged(false)
         }
 
         synchronized(jobs) {
@@ -162,11 +182,36 @@ class PersistentImageLoader(
         file: File,
         centerCrop: Boolean,
         loadFullResolution: Boolean = false,
+        onDisplayed: (() -> Unit)? = null,
     ) {
         Glide.with(target)
             .load(file)
             .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
             .dontAnimate()
+            .listener(
+                object : RequestListener<Drawable> {
+                    override fun onLoadFailed(
+                        e: GlideException?,
+                        model: Any?,
+                        target: Target<Drawable>,
+                        isFirstResource: Boolean,
+                    ): Boolean {
+                        onDisplayed?.invoke()
+                        return false
+                    }
+
+                    override fun onResourceReady(
+                        resource: Drawable,
+                        model: Any,
+                        target: Target<Drawable>?,
+                        dataSource: DataSource,
+                        isFirstResource: Boolean,
+                    ): Boolean {
+                        onDisplayed?.invoke()
+                        return false
+                    }
+                },
+            )
             .also { builder ->
                 if (loadFullResolution) {
                     builder.override(Target.SIZE_ORIGINAL, Target.SIZE_ORIGINAL)

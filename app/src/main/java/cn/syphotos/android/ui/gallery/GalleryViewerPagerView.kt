@@ -18,7 +18,7 @@ class GalleryViewerPagerView @JvmOverloads constructor(
     private val pagerAdapter: GalleryViewerAdapter = GalleryViewerAdapter(
         imageLoader = imageLoader,
         onPhotoTap = { onPhotoTap() },
-        onZoomStateChanged = ::handleZoomStateChanged,
+        onHorizontalSwipeIntent = ::handleHorizontalSwipeIntent,
     )
 
     private val viewPager: ViewPager2 = ViewPager2(context).apply {
@@ -48,7 +48,6 @@ class GalleryViewerPagerView @JvmOverloads constructor(
             object : ViewPager2.OnPageChangeCallback() {
                 override fun onPageSelected(position: Int) {
                     val item = currentItems.getOrNull(position) ?: return
-                    viewPager.isUserInputEnabled = true
                     onPageChanged(item.id)
                     prefetchAround(position)
                 }
@@ -74,12 +73,12 @@ class GalleryViewerPagerView @JvmOverloads constructor(
         }
     }
 
-    private fun handleZoomStateChanged(
-        position: Int,
-        zoomed: Boolean,
-    ) {
+    private fun handleHorizontalSwipeIntent(position: Int) {
         if (position == viewPager.currentItem) {
-            viewPager.isUserInputEnabled = !zoomed
+            viewPager.beginFakeDrag()
+            if (viewPager.isFakeDragging) {
+                viewPager.endFakeDrag()
+            }
         }
     }
 

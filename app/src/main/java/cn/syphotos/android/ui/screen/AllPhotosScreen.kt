@@ -90,6 +90,7 @@ fun AllPhotosScreen(
                 onFilterChange = onFilterChange,
                 onRequestSuggestions = onRequestSuggestions,
                 onClearSuggestions = onClearSuggestions,
+                onApply = { showFilters = false },
                 onClearAll = {
                     onFilterChange(PhotoFilter())
                     showFilters = false
