@@ -6,6 +6,7 @@ import android.util.AttributeSet
 import android.widget.FrameLayout
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import cn.syphotos.android.image.PersistentImageLoader
 import cn.syphotos.android.image.persistentImageLoader
 import cn.syphotos.android.model.GalleryPhotoSource
 
@@ -13,18 +14,14 @@ class GalleryViewerPagerView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : FrameLayout(context, attrs) {
-    private val imageLoader = context.persistentImageLoader()
-    private val pagerAdapter = GalleryViewerAdapter(
+    private val imageLoader: PersistentImageLoader = context.persistentImageLoader()
+    private val pagerAdapter: GalleryViewerAdapter = GalleryViewerAdapter(
         imageLoader = imageLoader,
         onPhotoTap = { onPhotoTap() },
-        onZoomStateChanged = { position, zoomed ->
-            if (position == viewPager.currentItem) {
-                viewPager.isUserInputEnabled = !zoomed
-            }
-        },
+        onZoomStateChanged = ::handleZoomStateChanged,
     )
 
-    private val viewPager = ViewPager2(context).apply {
+    private val viewPager: ViewPager2 = ViewPager2(context).apply {
         layoutParams = LayoutParams(
             LayoutParams.MATCH_PARENT,
             LayoutParams.MATCH_PARENT,
@@ -74,6 +71,15 @@ class GalleryViewerPagerView @JvmOverloads constructor(
                 viewPager.setCurrentItem(targetIndex, false)
             }
             prefetchAround(viewPager.currentItem.coerceIn(0, items.lastIndex.coerceAtLeast(0)))
+        }
+    }
+
+    private fun handleZoomStateChanged(
+        position: Int,
+        zoomed: Boolean,
+    ) {
+        if (position == viewPager.currentItem) {
+            viewPager.isUserInputEnabled = !zoomed
         }
     }
 
