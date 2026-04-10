@@ -17,8 +17,8 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
     private val mediumScaleValue = 2.2f
     private val maxScaleValue = 5f
     private val disabledMinScaleValue = 1f
-    private val disabledMediumScaleValue = 1.0001f
-    private val disabledMaxScaleValue = 1.0002f
+    private val disabledMediumScaleValue = 1.1f
+    private val disabledMaxScaleValue = 1.2f
     private var downX = 0f
     private var downY = 0f
     private var lastX = 0f
@@ -90,19 +90,20 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
         setScale(minimumScale, false)
     }
 
-    fun setZoomEnabled(enabled: Boolean) {
-        zoomEnabled = enabled
-        if (!enabled) {
-            minimumScale = disabledMinScaleValue
-            mediumScale = disabledMediumScaleValue
-            maximumScale = disabledMaxScaleValue
-            setScale(1f, false)
-        } else {
-            minimumScale = minScaleValue
-            mediumScale = mediumScaleValue
-            maximumScale = maxScaleValue
-        }
+fun setZoomEnabled(enabled: Boolean) {
+    zoomEnabled = enabled
+    if (!enabled) {
+        maximumScale = disabledMaxScaleValue
+        mediumScale = disabledMediumScaleValue
+        minimumScale = disabledMinScaleValue
+        setScale(disabledMinScaleValue, false)
+    } else {
+        maximumScale = maxScaleValue
+        mediumScale = mediumScaleValue
+        minimumScale = minScaleValue
+        setScale(minScaleValue, false)
     }
+}
 
     private fun isZoomed(): Boolean {
         return zoomEnabled && scale > minimumScale + 0.02f
