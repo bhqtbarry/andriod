@@ -1,6 +1,7 @@
 package cn.syphotos.android.ui.gallery
 
 import android.content.Context
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ViewConfiguration
@@ -11,13 +12,16 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : PhotoView(context, attrs) {
-    var onPageSwipeRequested: (() -> Unit)? = null
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val minScaleValue = 1f
     private val mediumScaleValue = 2.2f
     private val maxScaleValue = 5f
+    private val disabledMinScaleValue = 1f
+    private val disabledMediumScaleValue = 1.0001f
+    private val disabledMaxScaleValue = 1.0002f
     private var downX = 0f
     private var downY = 0f
+    private var lastX = 0f
     private var zoomEnabled = true
 
     init {
@@ -36,29 +40,35 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 downX = event.x
                 downY = event.y
+                lastX = event.x
                 parent?.requestDisallowInterceptTouchEvent(true)
             }
 
             MotionEvent.ACTION_MOVE -> {
+                val dxFromDown = event.x - downX
+                val dyFromDown = event.y - downY
+                val dxStep = event.x - lastX
+                lastX = event.x
+
                 when {
                     event.pointerCount >= 2 -> {
                         parent?.requestDisallowInterceptTouchEvent(true)
                     }
 
-                    isZoomed() -> {
+                    !isHorizontalGesture(dxFromDown, dyFromDown) -> {
                         parent?.requestDisallowInterceptTouchEvent(true)
                     }
 
+                    !isZoomed() -> {
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                    }
+
+                    shouldAllowParentIntercept(dxStep) -> {
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                    }
+
                     else -> {
-                        val dx = event.x - downX
-                        val dy = event.y - downY
-                        val horizontalSwipe = abs(dx) > touchSlop && abs(dx) > abs(dy)
-                        if (horizontalSwipe) {
-                            onPageSwipeRequested?.invoke()
-                            parent?.requestDisallowInterceptTouchEvent(false)
-                        } else {
-                            parent?.requestDisallowInterceptTouchEvent(true)
-                        }
+                        parent?.requestDisallowInterceptTouchEvent(true)
                     }
                 }
             }
@@ -83,9 +93,9 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
     fun setZoomEnabled(enabled: Boolean) {
         zoomEnabled = enabled
         if (!enabled) {
-            minimumScale = 1f
-            mediumScale = 1f
-            maximumScale = 1f
+            minimumScale = disabledMinScaleValue
+            mediumScale = disabledMediumScaleValue
+            maximumScale = disabledMaxScaleValue
             setScale(1f, false)
         } else {
             minimumScale = minScaleValue
@@ -96,5 +106,24 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
 
     private fun isZoomed(): Boolean {
         return zoomEnabled && scale > minimumScale + 0.02f
+    }
+
+    private fun isHorizontalGesture(dx: Float, dy: Float): Boolean {
+        return abs(dx) > touchSlop && abs(dx) > abs(dy)
+    }
+
+    private fun shouldAllowParentIntercept(dxStep: Float): Boolean {
+        if (dxStep == 0f) return false
+        val rect = currentDisplayRect() ?: return true
+        val atLeftEdge = rect.left >= -1f
+        val atRightEdge = rect.right <= width + 1f
+        return (dxStep > 0f && atLeftEdge) || (dxStep < 0f && atRightEdge)
+    }
+
+    private fun currentDisplayRect(): RectF? {
+        val drawable = drawable ?: return null
+        val rect = RectF(0f, 0f, drawable.intrinsicWidth.toFloat(), drawable.intrinsicHeight.toFloat())
+        imageMatrix.mapRect(rect)
+        return rect
     }
 }

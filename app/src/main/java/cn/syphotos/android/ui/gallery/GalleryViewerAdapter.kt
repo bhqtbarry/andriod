@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ProgressBar
-import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -17,7 +16,6 @@ import cn.syphotos.android.model.GalleryPhotoSource
 class GalleryViewerAdapter(
     private val imageLoader: PersistentImageLoader,
     private val onPhotoTap: () -> Unit,
-    private val onHorizontalSwipeIntent: (position: Int) -> Unit,
 ) : ListAdapter<GalleryPhotoSource, GalleryViewerAdapter.GalleryPageViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(
@@ -61,7 +59,6 @@ class GalleryViewerAdapter(
             photoView = photoView,
             progressBar = progressBar,
             onPhotoTap = onPhotoTap,
-            onHorizontalSwipeIntent = onHorizontalSwipeIntent,
         )
     }
 
@@ -85,19 +82,12 @@ class GalleryViewerAdapter(
         private val photoView: GalleryZoomPhotoView,
         private val progressBar: ProgressBar,
         private val onPhotoTap: () -> Unit,
-        private val onHorizontalSwipeIntent: (position: Int) -> Unit,
     ) : RecyclerView.ViewHolder(container) {
         private var currentPhotoId: Long = RecyclerView.NO_ID
 
         init {
             photoView.setOnPhotoTapListener { _, _, _ -> onPhotoTap() }
             photoView.setOnViewTapListener { _, _, _ -> onPhotoTap() }
-            photoView.onPageSwipeRequested = {
-                val position = bindingAdapterPosition
-                if (position != RecyclerView.NO_POSITION) {
-                    onHorizontalSwipeIntent(position)
-                }
-            }
         }
 
         fun bind(

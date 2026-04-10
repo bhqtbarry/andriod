@@ -18,7 +18,6 @@ class GalleryViewerPagerView @JvmOverloads constructor(
     private val pagerAdapter: GalleryViewerAdapter = GalleryViewerAdapter(
         imageLoader = imageLoader,
         onPhotoTap = { onPhotoTap() },
-        onHorizontalSwipeIntent = ::handleHorizontalSwipeIntent,
     )
 
     private val viewPager: ViewPager2 = ViewPager2(context).apply {
@@ -29,6 +28,7 @@ class GalleryViewerPagerView @JvmOverloads constructor(
         orientation = ViewPager2.ORIENTATION_HORIZONTAL
         offscreenPageLimit = 1
         adapter = pagerAdapter
+        isUserInputEnabled = true
         setBackgroundColor(Color.BLACK)
         (getChildAt(0) as? RecyclerView)?.apply {
             overScrollMode = RecyclerView.OVER_SCROLL_NEVER
@@ -70,15 +70,6 @@ class GalleryViewerPagerView @JvmOverloads constructor(
                 viewPager.setCurrentItem(targetIndex, false)
             }
             prefetchAround(viewPager.currentItem.coerceIn(0, items.lastIndex.coerceAtLeast(0)))
-        }
-    }
-
-    private fun handleHorizontalSwipeIntent(position: Int) {
-        if (position == viewPager.currentItem) {
-            viewPager.beginFakeDrag()
-            if (viewPager.isFakeDragging) {
-                viewPager.endFakeDrag()
-            }
         }
     }
 
