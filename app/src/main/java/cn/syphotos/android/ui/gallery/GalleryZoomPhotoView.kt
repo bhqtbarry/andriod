@@ -25,9 +25,11 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
     private var zoomEnabled = true
 
     init {
-        minimumScale = minScaleValue
-        mediumScale = mediumScaleValue
-        maximumScale = maxScaleValue
+        applyZoomLevels(
+            min = minScaleValue,
+            medium = mediumScaleValue,
+            max = maxScaleValue,
+        )
         scaleType = ScaleType.FIT_CENTER
         runCatching {
             javaClass.getMethod("setAllowParentInterceptOnEdge", Boolean::class.javaPrimitiveType)
@@ -90,20 +92,44 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
         setScale(minimumScale, false)
     }
 
-fun setZoomEnabled(enabled: Boolean) {
-    zoomEnabled = enabled
-    if (!enabled) {
-        maximumScale = disabledMaxScaleValue
-        mediumScale = disabledMediumScaleValue
-        minimumScale = disabledMinScaleValue
-        setScale(disabledMinScaleValue, false)
-    } else {
-        maximumScale = maxScaleValue
-        mediumScale = mediumScaleValue
-        minimumScale = minScaleValue
-        setScale(minScaleValue, false)
+    fun setZoomEnabled(enabled: Boolean) {
+        zoomEnabled = enabled
+        if (!enabled) {
+            applyZoomLevels(
+                min = disabledMinScaleValue,
+                medium = disabledMediumScaleValue,
+                max = disabledMaxScaleValue,
+            )
+            setScale(disabledMinScaleValue, false)
+        } else {
+            applyZoomLevels(
+                min = minScaleValue,
+                medium = mediumScaleValue,
+                max = maxScaleValue,
+            )
+            setScale(minScaleValue, false)
+        }
     }
-}
+
+    private fun applyZoomLevels(
+        min: Float,
+        medium: Float,
+        max: Float,
+    ) {
+        check(min < medium && medium < max) {
+            "Invalid zoom levels: min=$min medium=$medium max=$max"
+        }
+
+        if (max < maximumScale) {
+            minimumScale = min
+            mediumScale = medium
+            maximumScale = max
+        } else {
+            maximumScale = max
+            mediumScale = medium
+            minimumScale = min
+        }
+    }
 
     private fun isZoomed(): Boolean {
         return zoomEnabled && scale > minimumScale + 0.02f
