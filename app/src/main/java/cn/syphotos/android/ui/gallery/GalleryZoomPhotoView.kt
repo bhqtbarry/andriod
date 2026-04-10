@@ -120,14 +120,16 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
             "Invalid zoom levels: min=$min medium=$medium max=$max"
         }
 
-        if (max < maximumScale) {
-            minimumScale = min
-            mediumScale = medium
+        // PhotoView validates the full min/medium/max triple on each setter call,
+        // so we must keep the invariant true through every intermediate step.
+        if (max >= maximumScale) {
             maximumScale = max
+            mediumScale = medium
+            minimumScale = min
         } else {
-            maximumScale = max
             mediumScale = medium
             minimumScale = min
+            maximumScale = max
         }
     }
 
