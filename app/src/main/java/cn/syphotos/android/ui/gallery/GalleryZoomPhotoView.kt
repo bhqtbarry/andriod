@@ -4,24 +4,18 @@ import android.content.Context
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
-import android.view.ViewConfiguration
 import com.github.chrisbanes.photoview.PhotoView
-import kotlin.math.abs
 
 class GalleryZoomPhotoView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : PhotoView(context, attrs) {
-    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val minScaleValue = 1f
     private val mediumScaleValue = 2.2f
     private val maxScaleValue = 5f
     private val disabledMinScaleValue = 1f
     private val disabledMediumScaleValue = 1.1f
     private val disabledMaxScaleValue = 1.2f
-    private var downX = 0f
-    private var downY = 0f
-    private var lastX = 0f
     private var zoomEnabled = true
 
     init {
@@ -39,42 +33,7 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                downX = event.x
-                downY = event.y
-                lastX = event.x
-                parent?.requestDisallowInterceptTouchEvent(true)
-            }
-
-            MotionEvent.ACTION_MOVE -> {
-                val dxFromDown = event.x - downX
-                val dyFromDown = event.y - downY
-                val dxStep = event.x - lastX
-                lastX = event.x
-
-                when {
-                    event.pointerCount >= 2 -> {
-                        parent?.requestDisallowInterceptTouchEvent(true)
-                    }
-
-                    !isHorizontalGesture(dxFromDown, dyFromDown) -> {
-                        parent?.requestDisallowInterceptTouchEvent(true)
-                    }
-
-                    !isZoomed() -> {
-                        parent?.requestDisallowInterceptTouchEvent(false)
-                    }
-
-                    shouldAllowParentIntercept(dxStep) -> {
-                        parent?.requestDisallowInterceptTouchEvent(false)
-                    }
-
-                    else -> {
-                        parent?.requestDisallowInterceptTouchEvent(true)
-                    }
-                }
-            }
-
+            MotionEvent.ACTION_DOWN,
             MotionEvent.ACTION_POINTER_DOWN,
             MotionEvent.ACTION_POINTER_UP -> {
                 parent?.requestDisallowInterceptTouchEvent(true)
@@ -111,6 +70,21 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
         }
     }
 
+    fun canScrollPhotoHorizontally(direction: Int): Boolean {
+        if (!zoomEnabled) return false
+        if (scale <= minimumScale + 0.02f) return false
+
+        val rect = currentDisplayRect() ?: return false
+        val viewWidth = width.toFloat()
+        if (rect.width() <= viewWidth + 1f) return false
+
+        return when {
+            direction < 0 -> rect.left < -1f
+            direction > 0 -> rect.right > viewWidth + 1f
+            else -> false
+        }
+    }
+
     private fun applyZoomLevels(
         min: Float,
         medium: Float,
@@ -120,8 +94,6 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
             "Invalid zoom levels: min=$min medium=$medium max=$max"
         }
 
-        // PhotoView validates the full min/medium/max triple on each setter call,
-        // so we must keep the invariant true through every intermediate step.
         if (max >= maximumScale) {
             maximumScale = max
             mediumScale = medium
@@ -131,22 +103,6 @@ class GalleryZoomPhotoView @JvmOverloads constructor(
             minimumScale = min
             maximumScale = max
         }
-    }
-
-    private fun isZoomed(): Boolean {
-        return zoomEnabled && scale > minimumScale + 0.02f
-    }
-
-    private fun isHorizontalGesture(dx: Float, dy: Float): Boolean {
-        return abs(dx) > touchSlop && abs(dx) > abs(dy)
-    }
-
-    private fun shouldAllowParentIntercept(dxStep: Float): Boolean {
-        if (dxStep == 0f) return false
-        val rect = currentDisplayRect() ?: return true
-        val atLeftEdge = rect.left >= -1f
-        val atRightEdge = rect.right <= width + 1f
-        return (dxStep > 0f && atLeftEdge) || (dxStep < 0f && atRightEdge)
     }
 
     private fun currentDisplayRect(): RectF? {

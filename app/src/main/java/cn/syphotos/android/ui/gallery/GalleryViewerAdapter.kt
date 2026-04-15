@@ -38,6 +38,13 @@ class GalleryViewerAdapter(
             setBackgroundColor(Color.BLACK)
         }
 
+        val gestureHost = GalleryNestedScrollableHost(parent.context).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            )
+        }
+
         val progressBar = ProgressBar(parent.context, null, android.R.attr.progressBarStyleHorizontal).apply {
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -52,8 +59,10 @@ class GalleryViewerAdapter(
             alpha = 0.92f
         }
 
-        container.addView(photoView)
+        gestureHost.addView(photoView)
+        container.addView(gestureHost)
         container.addView(progressBar)
+
         return GalleryPageViewHolder(
             container = container,
             photoView = photoView,
